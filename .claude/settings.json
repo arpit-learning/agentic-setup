@@ -1,0 +1,105 @@
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agentic-setup refresh --quiet",
+            "description": "agentic-setup: auto-refreshing docs based on code changes"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agentic-setup learn finalize --auto",
+            "description": "agentic-setup: finalizing session learnings"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agentic-setup learn observe",
+            "description": "agentic-setup: recording tool usage for session learning"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agentic-setup learn observe --failure",
+            "description": "agentic-setup: recording tool failure for session learning"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "agentic-setup learn observe --prompt",
+            "description": "agentic-setup: recording user prompt for correction detection"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/agentic-check-sync.sh",
+            "description": "agentic-setup: offer setup if not configured"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/agentic-session-freshness.sh",
+            "description": "agentic-setup: check config freshness on session start"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/agentic-freshness-notify.sh",
+            "description": "agentic-setup: warn when agent configs are stale"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm run *)",
+      "Bash(npx *)"
+    ]
+  }
+}

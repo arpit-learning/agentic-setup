@@ -1,0 +1,983 @@
+import path from 'path';
+import chalk from 'chalk';
+import fs from 'fs';
+
+import { GITHUB_REPO_URL } from '../constants.js';
+import { getPackageVersion } from '../lib/package-version.js';
+import { collectFingerprint, type Fingerprint } from '../fingerprint/index.js';
+import { detectPlatforms } from '../scanner/index.js';
+import { installPreCommitHook, installStopHook, installSessionStartHook } from '../lib/hooks.js';
+import { resolveAllSources } from '../fingerprint/sources.js';
+import { getDetectedWorkspaces } from '../fingerprint/cache.js';
+import { generateSetup, buildDiagnostic } from '../ai/generate.js';
+import { writeSetup, undoSetup } from '../writers/index.js';
+import { stageFiles, cleanupStaging } from '../writers/staging.js';
+import { collectSetupFiles } from './setup-files.js';
+import { installLearningHooks, installCursorLearningHooks } from '../lib/learning-hooks.js';
+import { displayProductName } from '../lib/resolve-cli.js';
+import { writeState, getCurrentHeadSha } from '../lib/state.js';
+import { promptInput } from '../utils/prompt.js';
+import {
+  loadConfig,
+  getFastModel,
+  getDisplayModel,
+  writeConfigFile,
+  DEFAULT_MODELS,
+} from '../llm/config.js';
+import { validateModel } from '../llm/index.js';
+import { runInteractiveProviderSetup } from './interactive-provider-setup.js';
+import { isClaudeCliAvailable, isClaudeCliLoggedIn } from '../llm/claude-cli.js';
+import { isCursorAgentAvailable, isCursorLoggedIn } from '../llm/cursor-acp.js';
+import { isOpenCodeAvailable } from '../llm/opencode.js';
+import confirm from '@inquirer/confirm';
+import { computeLocalScore } from '../scoring/index.js';
+import { displayScoreDelta, displayScoreSummary } from '../scoring/display.js';
+import { readDismissedChecks, writeDismissedChecks } from '../scoring/dismissed.js';
+import type { FailingCheck, PassingCheck } from '../ai/generate.js';
+import { buildGeneratePrompt } from '../ai/generate.js';
+import { scoreAndRefine } from '../ai/score-refine.js';
+import { DebugReport } from '../lib/debug-report.js';
+import { ParallelTaskDisplay } from '../utils/parallel-tasks.js';
+import {
+  trackInitProviderSelected,
+  trackInitProjectDiscovered,
+  trackInitAgentSelected,
+  trackInitScoreComputed,
+  trackInitGenerationStarted,
+  trackInitGenerationCompleted,
+  trackInitReviewAction,
+  trackInitRefinementRound,
+  trackInitFilesWritten,
+  trackInitHookSelected,
+  trackInitScoreRegression,
+  trackInitLearnEnabled,
+  trackInitCompleted,
+} from '../telemetry/events.js';
+
+import { detectAgents, promptAgent, promptReviewAction, refineLoop } from './init-prompts.js';
+import type { TargetAgent } from './init-prompts.js';
+import { formatWhatChanged, printSetupSummary, displayTokenUsage } from './init-display.js';
+import {
+  isFirstRun,
+  summarizeSetup,
+  ensurePermissions,
+  writeErrorLog,
+  evaluateDismissals,
+} from './init-helpers.js';
+import { recordScore } from '../scoring/history.js';
+import { scanLargeFiles } from '../fingerprint/large-file-scan.js';
+import { filterIgnoredWarnings } from '../fingerprint/large-file-filter.js';
+import { printLargeFileWarnings } from '../fingerprint/large-file-warn.js';
+import {
+  readProjectConfig,
+  writeProjectConfig,
+  mergeProjectConfig,
+  type TargetAgentName,
+} from '../lib/project-config.js';
+import { resolveProfile } from '../profiles/index.js';
+import { writeRunMd } from '../ai/run-md.js';
+import { writeContextIgnoreFiles } from '../writers/context-ignore.js';
+import { writeContributingAiSection } from '../writers/contributing-ai.js';
+import { updateSetupMetadata } from '../writers/manifest.js';
+import { ciInitCommand } from './ci.js';
+
+const IS_WINDOWS = process.platform === 'win32';
+
+export type { TargetAgent };
+
+interface InitOptions {
+  agent?: TargetAgent;
+  source?: string[];
+  dryRun?: boolean;
+  force?: boolean;
+  debugReport?: boolean;
+  showTokens?: boolean;
+  autoApprove?: boolean;
+  verbose?: boolean;
+  thorough?: boolean;
+}
+
+function log(verbose: boolean | undefined, ...args: unknown[]): void {
+  if (verbose) console.log(chalk.dim(`  [verbose] ${args.map(String).join(' ')}`));
+}
+
+export async function initCommand(options: InitOptions) {
+  const brand = chalk.hex('#EB9D83');
+  const title = chalk.hex('#83D1EB');
+  const bin = displayProductName();
+  const firstRun = isFirstRun(process.cwd());
+
+  if (firstRun) {
+    console.log(
+      brand.bold(`
+   ██████╗ █████╗ ██╗     ██╗██████╗ ███████╗██████╗
+  ██╔════╝██╔══██╗██║     ██║██╔══██╗██╔════╝██╔══██╗
+  ██║     ███████║██║     ██║██████╔╝█████╗  ██████╔╝
+  ██║     ██╔══██║██║     ██║██╔══██╗██╔══╝  ██╔══██╗
+  ╚██████╗██║  ██║███████╗██║██████╔╝███████╗██║  ██║
+   ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝
+  `),
+    );
+    console.log(chalk.dim('  Keep your AI agent configs in sync — automatically.'));
+    console.log(chalk.dim('  Works across Claude Code, Cursor, Codex, and GitHub Copilot.\n'));
+
+    console.log(title.bold('  How it works:\n'));
+    console.log(chalk.dim('  1. Connect    Link your LLM provider and select your agents'));
+    console.log(chalk.dim('  2. Setup      Detect stack, install sync hooks & skills'));
+    console.log(chalk.dim('  3. Generate   Audit existing config or generate from scratch'));
+    console.log(chalk.dim('  4. Finalize   Review changes and score your setup\n'));
+  } else {
+    console.log(brand.bold('\n  agentic-setup') + chalk.dim('  — setting up continuous sync\n'));
+  }
+
+  const platforms = detectPlatforms();
+  if (!platforms.claude && !platforms.cursor && !platforms.codex && !platforms.opencode) {
+    console.log(
+      chalk.yellow('  ⚠ No supported AI platforms detected (Claude, Cursor, Codex, OpenCode).'),
+    );
+    console.log(
+      chalk.yellow(
+        "    agentic-setup will still generate config files, but they won't be auto-installed.\n",
+      ),
+    );
+  }
+
+  const report = options.debugReport ? new DebugReport() : null;
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Step 1 — Connect (auto-detect provider + agents)
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log(title.bold('  Step 1/3 — Connect\n'));
+
+  // 1a. LLM provider — auto-detect before prompting
+  let config = loadConfig();
+
+  // If user explicitly requested OpenCode agent and no config yet, try to auto-configure OpenCode silently
+  if (!config && options.agent?.includes('opencode')) {
+    if (isOpenCodeAvailable()) {
+      console.log(chalk.dim('  Detected: OpenCode (uses your existing subscription)\n'));
+      const autoConfig = { provider: 'opencode' as const, model: DEFAULT_MODELS.opencode };
+      writeConfigFile(autoConfig);
+      config = autoConfig;
+    }
+  }
+  if (!config && !options.autoApprove) {
+    // Try seat-based auto-detection
+    if (isClaudeCliAvailable() && isClaudeCliLoggedIn()) {
+      console.log(chalk.dim('  Detected: Claude Code CLI (uses your Pro/Max/Team subscription)\n'));
+      const useIt = await confirm({ message: 'Use Claude Code as your LLM provider?' });
+      if (useIt) {
+        const autoConfig = { provider: 'claude-cli' as const, model: 'default' };
+        writeConfigFile(autoConfig);
+        config = autoConfig;
+      }
+    } else if (isCursorAgentAvailable() && isCursorLoggedIn()) {
+      console.log(chalk.dim('  Detected: Cursor (uses your existing subscription)\n'));
+      const useIt = await confirm({ message: 'Use Cursor as your LLM provider?' });
+      if (useIt) {
+        const autoConfig = { provider: 'cursor' as const, model: 'sonnet-4.6' };
+        writeConfigFile(autoConfig);
+        config = autoConfig;
+      }
+    }
+  }
+  if (!config) {
+    if (options.autoApprove) {
+      // In auto-approve mode, try seat-based silently
+      if (isClaudeCliAvailable() && isClaudeCliLoggedIn()) {
+        const autoConfig = { provider: 'claude-cli' as const, model: 'default' };
+        writeConfigFile(autoConfig);
+        config = autoConfig;
+      } else if (isCursorAgentAvailable() && isCursorLoggedIn()) {
+        const autoConfig = { provider: 'cursor' as const, model: 'sonnet-4.6' };
+        writeConfigFile(autoConfig);
+        config = autoConfig;
+      } else if (isOpenCodeAvailable()) {
+        const autoConfig = { provider: 'opencode' as const, model: DEFAULT_MODELS.opencode };
+        writeConfigFile(autoConfig);
+        config = autoConfig;
+      }
+    }
+    if (!config) {
+      console.log(chalk.dim('  No LLM provider detected.\n'));
+      await runInteractiveProviderSetup({
+        selectMessage: 'How do you want to use agentic-setup? (choose LLM provider)',
+      });
+      config = loadConfig();
+      if (!config) {
+        console.log(chalk.red('  Configuration cancelled or failed.\n'));
+        throw new Error('__exit__');
+      }
+    }
+  }
+  trackInitProviderSelected(config.provider, config.model, firstRun);
+  const displayModel = getDisplayModel(config);
+  const fastModel = getFastModel();
+  const modelLine = fastModel
+    ? `  Provider: ${config.provider} | Model: ${displayModel} | Scan: ${fastModel}`
+    : `  Provider: ${config.provider} | Model: ${displayModel}`;
+  console.log(chalk.dim(modelLine + '\n'));
+
+  if (report) {
+    report.markStep('Provider connection');
+    report.addSection(
+      'LLM Provider',
+      `- **Provider**: ${config.provider}\n- **Model**: ${displayModel}\n- **Fast model**: ${fastModel || 'none'}`,
+    );
+  }
+
+  await validateModel({ fast: true });
+
+  // 1b. Pick target agents — auto-detect, confirm once
+  let targetAgent: TargetAgent;
+  const agentAutoDetected = !options.agent;
+  if (options.agent) {
+    targetAgent = options.agent;
+  } else {
+    const detected = detectAgents(process.cwd());
+    if (detected.length > 0 && (options.autoApprove || firstRun)) {
+      targetAgent = detected;
+      console.log(chalk.dim(`  Coding agents in this repo: ${detected.join(', ')}\n`));
+    } else if (detected.length > 0) {
+      console.log(chalk.dim(`  Coding agents in this repo: ${detected.join(', ')}\n`));
+      const useDetected = await confirm({ message: 'Generate configs for these agents?' });
+      targetAgent = useDetected ? detected : await promptAgent();
+    } else {
+      targetAgent = options.autoApprove ? ['claude'] : await promptAgent();
+    }
+  }
+  console.log(chalk.dim(`  Target: ${targetAgent.join(', ')}\n`));
+  trackInitAgentSelected(targetAgent, agentAutoDetected);
+
+  if (targetAgent.length === 1 && targetAgent[0] === 'github-copilot') {
+    console.log(
+      chalk.yellow(
+        '  Note: GitHub Copilot is a sync target — agentic-setup writes .github/copilot-instructions.md\n' +
+          '  but needs an LLM provider (configured above) to power generation.\n' +
+          '  For the best experience, also select claude or cursor as a target agent.\n',
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Step 2 — Setup (fingerprint + install sync infrastructure)
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log(title.bold('  Step 2/4 — Setup\n'));
+
+  console.log(chalk.dim('  Installing sync infrastructure...\n'));
+
+  // Install pre-commit hook early — sync infrastructure first
+  const hookResult = installPreCommitHook();
+  if (hookResult.installed) {
+    console.log(`  ${chalk.green('✓')} Pre-commit hook installed — configs sync on every commit`);
+  } else if (hookResult.upgraded) {
+    console.log(`  ${chalk.green('✓')} Pre-commit hook — upgraded to latest version`);
+  } else if (hookResult.alreadyInstalled) {
+    console.log(`  ${chalk.green('✓')} Pre-commit hook — active`);
+  }
+
+  installStopHook();
+  console.log(`  ${chalk.green('✓')} Onboarding hook — nudges new team members to set up`);
+  installSessionStartHook();
+  console.log(`  ${chalk.green('✓')} Freshness hook — warns when configs are stale`);
+
+  if (IS_WINDOWS) {
+    console.log(
+      chalk.yellow(
+        '\n  Note: hooks use shell syntax and require Git Bash (included with Git for Windows).',
+      ),
+    );
+    console.log(
+      chalk.dim(
+        "  If hooks don't run, ensure Git for Windows is installed and git is using its bundled sh.",
+      ),
+    );
+  }
+
+  // Enable session learning by default
+  const hasLearnableAgent = targetAgent.includes('claude') || targetAgent.includes('cursor');
+  if (hasLearnableAgent) {
+    if (targetAgent.includes('claude')) installLearningHooks();
+    if (targetAgent.includes('cursor')) installCursorLearningHooks();
+    console.log(`  ${chalk.green('✓')} Session learning enabled`);
+    trackInitLearnEnabled(true);
+  }
+
+  console.log('');
+  console.log(chalk.dim('  New team members can run `agentic-setup setup` in their terminal.\n'));
+
+  // Compute & show initial score
+  const baselineScore = computeLocalScore(process.cwd(), targetAgent);
+  console.log(chalk.dim('  Current config score:'));
+  displayScoreSummary(baselineScore);
+  if (options.verbose) {
+    for (const c of baselineScore.checks) {
+      log(
+        options.verbose,
+        `  ${c.passed ? '✓' : '✗'} ${c.name}: ${c.earnedPoints}/${c.maxPoints}${c.suggestion ? ` — ${c.suggestion}` : ''}`,
+      );
+    }
+  }
+
+  if (report) {
+    report.markStep('Baseline scoring');
+    report.addSection(
+      'Scoring: Baseline',
+      `**Score**: ${baselineScore.score}/100\n\n| Check | Passed | Points | Max |\n|-------|--------|--------|-----|\n` +
+        baselineScore.checks
+          .map(
+            (c) =>
+              `| ${c.name} | ${c.passed ? 'Yes' : 'No'} | ${c.earnedPoints} | ${c.maxPoints} |`,
+          )
+          .join('\n'),
+    );
+    report.addSection('Generation: Target Agents', targetAgent.join(', '));
+  }
+
+  const hasExistingConfig = !!(
+    baselineScore.checks.some((c) => c.id === 'claude_md_exists' && c.passed) ||
+    baselineScore.checks.some((c) => c.id === 'cursorrules_exists' && c.passed)
+  );
+
+  const NON_LLM_CHECKS = new Set([
+    'hooks_configured',
+    'agents_md_exists',
+    'permissions_configured',
+    'mcp_servers',
+    'service_coverage',
+    'mcp_completeness',
+  ]);
+
+  const passingCount = baselineScore.checks.filter((c) => c.passed).length;
+  const failingCount = baselineScore.checks.filter((c) => !c.passed).length;
+
+  // Ask whether to generate/audit configs
+  let skipGeneration = false;
+
+  if (hasExistingConfig && baselineScore.score === 100) {
+    trackInitScoreComputed(baselineScore.score, passingCount, failingCount, true);
+    console.log(chalk.bold.green('\n  Your config is already optimal.\n'));
+    skipGeneration = !options.force;
+  } else if (hasExistingConfig && !options.force && !options.autoApprove) {
+    trackInitScoreComputed(baselineScore.score, passingCount, failingCount, false);
+    console.log(
+      chalk.dim('\n  Sync infrastructure is ready. agentic-setup can also audit your existing'),
+    );
+    console.log(chalk.dim('  configs and improve them using AI.\n'));
+    const auditAnswer = await promptInput('  Audit and improve your existing config? (Y/n) ');
+    skipGeneration = auditAnswer.toLowerCase() === 'n';
+  } else if (!hasExistingConfig && !options.force && !options.autoApprove) {
+    trackInitScoreComputed(baselineScore.score, passingCount, failingCount, false);
+    console.log(
+      chalk.dim('\n  Sync infrastructure is ready. agentic-setup can also generate tailored'),
+    );
+    console.log(chalk.dim('  CLAUDE.md, Cursor rules, and Codex configs for your project.\n'));
+    const generateAnswer = await promptInput('  Generate agent configs? (Y/n) ');
+    skipGeneration = generateAnswer.toLowerCase() === 'n';
+  } else {
+    trackInitScoreComputed(baselineScore.score, passingCount, failingCount, false);
+  }
+
+  if (skipGeneration) {
+    // Write managed blocks into config files so agents know about agentic-setup
+    const {
+      appendManagedBlocks,
+      getCursorPreCommitRule,
+      getCursorLearningsRule,
+      getCursorSyncRule,
+      getCursorSetupRule,
+    } = await import('../writers/pre-commit-block.js');
+
+    // CLAUDE.md — create or append managed blocks
+    const claudeMdPath = 'CLAUDE.md';
+    let claudeContent = '';
+    try {
+      claudeContent = fs.readFileSync(claudeMdPath, 'utf-8');
+    } catch {
+      /* doesn't exist */
+    }
+    if (!claudeContent) {
+      claudeContent = `# ${path.basename(process.cwd())}\n`;
+    }
+    const updatedClaude = appendManagedBlocks(claudeContent, 'claude', targetAgent);
+    if (updatedClaude !== claudeContent || !fs.existsSync(claudeMdPath)) {
+      fs.writeFileSync(claudeMdPath, updatedClaude);
+      console.log(`  ${chalk.green('✓')} CLAUDE.md — added agentic-setup sync instructions`);
+    }
+
+    // Cursor rules — write sync and pre-commit rules
+    if (targetAgent.includes('cursor')) {
+      const rulesDir = path.join('.cursor', 'rules');
+      if (!fs.existsSync(rulesDir)) fs.mkdirSync(rulesDir, { recursive: true });
+      for (const rule of [
+        getCursorPreCommitRule(targetAgent),
+        getCursorLearningsRule(),
+        getCursorSyncRule(),
+        getCursorSetupRule(),
+      ]) {
+        fs.writeFileSync(path.join(rulesDir, rule.filename), rule.content);
+      }
+      console.log(`  ${chalk.green('✓')} Cursor rules — added agentic-setup sync rules`);
+    }
+
+    // Copilot — create or append managed blocks
+    if (targetAgent.includes('github-copilot')) {
+      const copilotPath = path.join('.github', 'copilot-instructions.md');
+      let copilotContent = '';
+      try {
+        copilotContent = fs.readFileSync(copilotPath, 'utf-8');
+      } catch {
+        /* doesn't exist */
+      }
+      if (!copilotContent) {
+        fs.mkdirSync('.github', { recursive: true });
+        copilotContent = `# ${path.basename(process.cwd())}\n`;
+      }
+      const updatedCopilot = appendManagedBlocks(copilotContent, 'copilot', targetAgent);
+      if (updatedCopilot !== copilotContent) {
+        fs.writeFileSync(copilotPath, updatedCopilot);
+        console.log(
+          `  ${chalk.green('✓')} Copilot instructions — added agentic-setup sync instructions`,
+        );
+      }
+    }
+
+    const sha = getCurrentHeadSha();
+    writeState({
+      lastRefreshSha: sha ?? '',
+      lastRefreshTimestamp: new Date().toISOString(),
+      targetAgent,
+    });
+
+    trackInitCompleted('sync-only', baselineScore.score);
+    console.log(chalk.bold.green('\n  agentic-setup sync is set up!\n'));
+    console.log(chalk.dim('  Your agent configs will sync automatically on every commit.'));
+    console.log(
+      chalk.dim('  Run ') +
+        title(`${bin} init --force`) +
+        chalk.dim(' anytime to generate or improve configs.\n'),
+    );
+    return;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Step 3 — Generate
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log(title.bold('\n  Step 3/4 — Generate\n'));
+
+  const genModelInfo = fastModel
+    ? `  Using ${displayModel} for docs, ${fastModel} for skills`
+    : `  Using ${displayModel}`;
+  console.log(chalk.dim(genModelInfo + '\n'));
+
+  if (report) report.markStep('Generation');
+
+  trackInitGenerationStarted(false);
+  const genStartTime = Date.now();
+
+  let generatedSetup: Record<string, unknown> | null = null;
+  let rawOutput: string | undefined;
+  let genStopReason: string | undefined;
+  let fingerprint!: Fingerprint;
+  const sessionHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+  const display = new ParallelTaskDisplay();
+  const TASK_STACK = display.add('Detecting project stack', { pipelineLabel: 'Scan' });
+  const TASK_CONFIG = display.add('Generating configs', { depth: 1, pipelineLabel: 'Generate' });
+  const TASK_SCORE_REFINE = display.add('Validating & refining config', {
+    pipelineLabel: 'Validate',
+  });
+  display.start();
+  display.enableWaitingContent();
+
+  try {
+    // Phase A: Fingerprint
+    display.update(TASK_STACK, 'running');
+    fingerprint = await collectFingerprint(process.cwd());
+    const projectConfig = readProjectConfig();
+    const profileHints = resolveProfile(projectConfig.profile, fingerprint);
+    log(
+      options.verbose,
+      `Profile: ${profileHints.profile} — ${profileHints.focusAreas.join(', ')}`,
+    );
+
+    printLargeFileWarnings(filterIgnoredWarnings(scanLargeFiles(process.cwd()), process.cwd()));
+
+    const stackParts = [...fingerprint.languages, ...fingerprint.frameworks];
+    const stackSummary = stackParts.join(', ') || 'no languages';
+    const largeRepoNote =
+      fingerprint.fileTree.length > 5000
+        ? ` (${fingerprint.fileTree.length.toLocaleString()} files, smart sampling active)`
+        : '';
+    display.update(TASK_STACK, 'done', stackSummary + largeRepoNote);
+
+    trackInitProjectDiscovered(
+      fingerprint.languages.length,
+      fingerprint.frameworks.length,
+      fingerprint.fileTree.length,
+    );
+    log(
+      options.verbose,
+      `Fingerprint: ${fingerprint.languages.length} languages, ${fingerprint.frameworks.length} frameworks, ${fingerprint.fileTree.length} files`,
+    );
+
+    // Resolve external sources
+    const cliSources = options.source || [];
+    const workspaces = getDetectedWorkspaces(process.cwd());
+    const sources = resolveAllSources(process.cwd(), cliSources, workspaces);
+    if (sources.length > 0) {
+      fingerprint.sources = sources;
+      log(
+        options.verbose,
+        `Sources: ${sources.length} resolved (${sources.map((s) => s.name).join(', ')})`,
+      );
+    }
+
+    if (report) {
+      report.addJson('Fingerprint: Git', {
+        remote: fingerprint.gitRemoteUrl,
+        packageName: fingerprint.packageName,
+      });
+      report.addCodeBlock('Fingerprint: File Tree', fingerprint.fileTree.join('\n'));
+      report.addJson('Fingerprint: Detected Stack', {
+        languages: fingerprint.languages,
+        frameworks: fingerprint.frameworks,
+        tools: fingerprint.tools,
+      });
+      report.addJson('Fingerprint: Existing Configs', fingerprint.existingConfigs);
+      if (fingerprint.codeAnalysis)
+        report.addJson('Fingerprint: Code Analysis', fingerprint.codeAnalysis);
+    }
+
+    // Get project description if empty
+    const isEmpty = fingerprint.fileTree.length < 3;
+    if (isEmpty) {
+      display.stop();
+      fingerprint.description = await promptInput('What will you build in this project?');
+      display.start();
+    }
+
+    // Phase B: Generate configs
+    display.update(TASK_CONFIG, 'running');
+
+    await (async () => {
+      let localBaseline = baselineScore;
+      const failingForDismissal = localBaseline.checks.filter((c) => !c.passed && c.maxPoints > 0);
+      if (failingForDismissal.length > 0) {
+        display.update(TASK_CONFIG, 'running', 'Evaluating baseline checks...');
+        try {
+          const newDismissals = await evaluateDismissals(failingForDismissal, fingerprint);
+          if (newDismissals.length > 0) {
+            const existing = readDismissedChecks();
+            const existingIds = new Set(existing.map((d) => d.id));
+            const merged = [...existing, ...newDismissals.filter((d) => !existingIds.has(d.id))];
+            writeDismissedChecks(merged);
+            localBaseline = computeLocalScore(process.cwd(), targetAgent);
+          }
+        } catch {
+          display.update(TASK_CONFIG, 'running', 'Skipped dismissal evaluation');
+        }
+      }
+
+      let failingChecks: FailingCheck[] | undefined;
+      let passingChecks: PassingCheck[] | undefined;
+      let currentScore: number | undefined;
+
+      if (hasExistingConfig && localBaseline.score >= 95 && !options.force) {
+        const currentLlmFixable = localBaseline.checks.filter(
+          (c) => !c.passed && c.maxPoints > 0 && !NON_LLM_CHECKS.has(c.id),
+        );
+        failingChecks = currentLlmFixable.map((c) => ({
+          name: c.name,
+          suggestion: c.suggestion,
+          fix: c.fix,
+        }));
+        passingChecks = localBaseline.checks.filter((c) => c.passed).map((c) => ({ name: c.name }));
+        currentScore = localBaseline.score;
+      }
+
+      if (report) {
+        const fullPrompt = buildGeneratePrompt(
+          fingerprint,
+          targetAgent,
+          fingerprint.description,
+          failingChecks,
+          currentScore,
+          passingChecks,
+          profileHints.promptFragment,
+        );
+        report.addCodeBlock('Generation: Full LLM Prompt', fullPrompt);
+      }
+
+      const result = await generateSetup(
+        fingerprint,
+        targetAgent,
+        fingerprint.description,
+        {
+          onStatus: (status) => display.update(TASK_CONFIG, 'running', status),
+          onComplete: (setup) => {
+            generatedSetup = setup;
+          },
+          onError: (error) => display.update(TASK_CONFIG, 'failed', error),
+          onContent: (text) => {
+            const lines = text
+              .split('\n')
+              .filter((l) => l.trim())
+              .slice(-8);
+            if (lines.length > 0) {
+              display.setPreviewContent(lines.map((l) => `  ${chalk.dim(l.slice(0, 80))}`));
+            }
+          },
+        },
+        failingChecks,
+        currentScore,
+        passingChecks,
+        { skipSkills: true, profileHint: profileHints.promptFragment },
+      );
+
+      if (!generatedSetup) generatedSetup = result.setup;
+      rawOutput = result.raw;
+      genStopReason = result.stopReason;
+
+      if (!generatedSetup) {
+        const diagnostic = buildDiagnostic(genStopReason, rawOutput, rawOutput?.length ?? 0);
+        display.update(TASK_CONFIG, 'failed', diagnostic.split('\n')[0].slice(0, 80));
+        return;
+      }
+
+      display.update(TASK_CONFIG, 'done');
+    })();
+
+    // Phase D: Score-based auto-refinement
+    if (generatedSetup) {
+      display.update(TASK_SCORE_REFINE, 'running');
+      display.setPreviewContent([]);
+      sessionHistory.push({
+        role: 'assistant',
+        content: summarizeSetup('Initial generation', generatedSetup),
+      });
+      try {
+        const refined = await scoreAndRefine(
+          generatedSetup,
+          process.cwd(),
+          sessionHistory,
+          {
+            onStatus: (msg) => display.update(TASK_SCORE_REFINE, 'running', msg),
+          },
+          { thorough: options.thorough },
+        );
+        if (refined !== generatedSetup) {
+          display.update(TASK_SCORE_REFINE, 'done', 'Refined');
+          generatedSetup = refined;
+        } else {
+          display.update(TASK_SCORE_REFINE, 'done', 'Passed');
+        }
+      } catch {
+        display.update(TASK_SCORE_REFINE, 'done', 'Skipped');
+      }
+    } else {
+      display.update(TASK_SCORE_REFINE, 'failed', 'No config to validate');
+    }
+  } catch (err) {
+    display.stop();
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.log(chalk.red(`\n  Engine failed: ${msg}\n`));
+    writeErrorLog(config, undefined, msg, 'exception');
+    throw new Error('__exit__');
+  }
+
+  display.stop();
+
+  const elapsedMs = Date.now() - genStartTime;
+  trackInitGenerationCompleted(elapsedMs, 0);
+  const mins = Math.floor(elapsedMs / 60000);
+  const secs = Math.floor((elapsedMs % 60000) / 1000);
+  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  console.log(chalk.dim(`\n  Done in ${timeStr}\n`));
+
+  if (!generatedSetup) {
+    console.log(chalk.red('  Failed to generate config.'));
+    writeErrorLog(config, rawOutput, undefined, genStopReason);
+    if (rawOutput) {
+      console.log(chalk.dim('\nRaw LLM output (JSON parse failed):'));
+      console.log(chalk.dim(rawOutput.slice(0, 500)));
+    }
+    throw new Error('__exit__');
+  }
+
+  if (report) {
+    if (rawOutput) report.addCodeBlock('Generation: Raw LLM Response', rawOutput);
+    report.addJson('Generation: Parsed Config', generatedSetup);
+  }
+
+  log(
+    options.verbose,
+    `Generation completed: ${elapsedMs}ms, stopReason: ${genStopReason || 'end_turn'}`,
+  );
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Step 4 — Finalize (Review + Write)
+  // ───────────────────────────────────────────────────────────────────────────
+  console.log(title.bold('  Step 4/4 — Finalize\n'));
+
+  const setupFiles = collectSetupFiles(generatedSetup, targetAgent);
+  const staged = stageFiles(setupFiles, process.cwd());
+
+  const totalChanges = staged.newFiles + staged.modifiedFiles;
+
+  // "What changed" summary
+  const changes = formatWhatChanged(generatedSetup);
+  if (changes.length > 0) {
+    for (const line of changes) {
+      console.log(`  ${chalk.dim('•')} ${line}`);
+    }
+    console.log('');
+  }
+
+  console.log(
+    chalk.dim(
+      `  ${chalk.green(`${staged.newFiles} new`)} / ${chalk.yellow(`${staged.modifiedFiles} modified`)} file${totalChanges !== 1 ? 's' : ''}`,
+    ),
+  );
+
+  console.log('');
+
+  let action: 'accept' | 'refine' | 'decline';
+
+  if (totalChanges === 0) {
+    console.log(chalk.dim('  No changes needed — your configs are already up to date.\n'));
+    cleanupStaging();
+    action = 'accept';
+  } else if (options.autoApprove) {
+    log(options.verbose, 'Auto-approve: accepting changes without review');
+    action = 'accept';
+    trackInitReviewAction(action, 'auto-approved');
+  } else {
+    // Single consolidated review prompt
+    printSetupSummary(generatedSetup);
+    action = await promptReviewAction(totalChanges > 0, staged);
+    trackInitReviewAction(action, totalChanges > 0 ? 'reviewed' : 'skipped');
+  }
+
+  let refinementRound = 0;
+  while (action === 'refine') {
+    refinementRound++;
+    generatedSetup = await refineLoop(
+      generatedSetup,
+      sessionHistory,
+      summarizeSetup,
+      printSetupSummary,
+    );
+    trackInitRefinementRound(refinementRound, !!generatedSetup);
+    if (!generatedSetup) {
+      cleanupStaging();
+      console.log(chalk.dim('Refinement cancelled. No files were modified.'));
+      return;
+    }
+    const updatedFiles = collectSetupFiles(generatedSetup, targetAgent);
+    const restaged = stageFiles(updatedFiles, process.cwd());
+    console.log(
+      chalk.dim(
+        `  ${chalk.green(`${restaged.newFiles} new`)} / ${chalk.yellow(`${restaged.modifiedFiles} modified`)} file${restaged.newFiles + restaged.modifiedFiles !== 1 ? 's' : ''}\n`,
+      ),
+    );
+    printSetupSummary(generatedSetup);
+
+    const { openReview: openRev } = await import('../utils/review.js');
+    await openRev('terminal', restaged.stagedFiles);
+    action = await promptReviewAction(true, undefined);
+    trackInitReviewAction(action, 'terminal');
+  }
+
+  cleanupStaging();
+
+  if (action === 'decline') {
+    console.log(chalk.dim('Declined. No files were modified.'));
+    return;
+  }
+
+  // Write files
+  if (options.dryRun) {
+    console.log(chalk.yellow('\n[Dry run] Would write the following files:'));
+    console.log(JSON.stringify(generatedSetup, null, 2));
+    return;
+  }
+
+  const { default: ora } = await import('ora');
+  const writeSpinner = ora('Writing config files...').start();
+  try {
+    if (targetAgent.includes('codex') && !fs.existsSync('AGENTS.md') && !generatedSetup.codex) {
+      const claude = generatedSetup.claude as Record<string, unknown> | undefined;
+      const cursor = generatedSetup.cursor as Record<string, unknown> | undefined;
+      const agentRefs: string[] = [];
+      if (claude) agentRefs.push('See `CLAUDE.md` for Claude Code configuration.');
+      if (cursor) agentRefs.push('See `.cursor/rules/` for Cursor rules.');
+      if (agentRefs.length === 0)
+        agentRefs.push('See CLAUDE.md and .cursor/rules/ for agent configurations.');
+      const stubContent = `# AGENTS.md\n\nThis project uses AI coding agents configured by [agentic-setup](${GITHUB_REPO_URL}).\n\n${agentRefs.join(' ')}\n`;
+      (generatedSetup as Record<string, unknown>).codex = { agentsMd: stubContent };
+    }
+
+    const result = writeSetup(generatedSetup as unknown as Parameters<typeof writeSetup>[0]);
+    writeSpinner.succeed('Config files written');
+    trackInitFilesWritten(
+      result.written.length + result.deleted.length,
+      result.written.length,
+      0,
+      result.deleted.length,
+    );
+
+    console.log(chalk.bold('\nFiles created/updated:'));
+    for (const file of result.written) {
+      console.log(`  ${chalk.green('✓')} ${file}`);
+    }
+    if (result.deleted.length > 0) {
+      console.log(chalk.bold('\nFiles removed:'));
+      for (const file of result.deleted) {
+        console.log(`  ${chalk.red('✗')} ${file}`);
+      }
+    }
+    if (result.backupDir) {
+      console.log(chalk.dim(`\n  Backups saved to ${result.backupDir}`));
+    }
+  } catch (err) {
+    writeSpinner.fail('Failed to write files');
+    console.error(chalk.red(err instanceof Error ? err.message : 'Unknown error'));
+    throw new Error('__exit__');
+  }
+
+  if (fingerprint) ensurePermissions(fingerprint);
+
+  const sha = getCurrentHeadSha();
+  writeState({
+    lastRefreshSha: sha ?? '',
+    lastRefreshTimestamp: new Date().toISOString(),
+    targetAgent,
+  });
+
+  // Score regression check
+  const afterScore = computeLocalScore(process.cwd(), targetAgent);
+
+  if (afterScore.score < baselineScore.score) {
+    trackInitScoreRegression(baselineScore.score, afterScore.score);
+    console.log('');
+    console.log(
+      chalk.yellow(
+        `  Score would drop from ${baselineScore.score} to ${afterScore.score} — reverting changes.`,
+      ),
+    );
+    try {
+      const { restored, removed } = undoSetup();
+      if (restored.length > 0 || removed.length > 0) {
+        console.log(
+          chalk.dim(
+            `  Reverted ${restored.length + removed.length} file${restored.length + removed.length === 1 ? '' : 's'} from backup.`,
+          ),
+        );
+      }
+    } catch {
+      /* best effort */
+    }
+    console.log(
+      chalk.dim('  Run ') +
+        chalk.hex('#83D1EB')(`${bin} init --force`) +
+        chalk.dim(' to override.\n'),
+    );
+    return;
+  }
+
+  if (report) {
+    report.markStep('Post-write scoring');
+    report.addSection(
+      'Scoring: Post-Write',
+      `**Score**: ${afterScore.score}/100 (delta: ${afterScore.score - baselineScore.score >= 0 ? '+' : ''}${afterScore.score - baselineScore.score})\n\n| Check | Passed | Points | Max |\n|-------|--------|--------|-----|\n` +
+        afterScore.checks
+          .map(
+            (c) =>
+              `| ${c.name} | ${c.passed ? 'Yes' : 'No'} | ${c.earnedPoints} | ${c.maxPoints} |`,
+          )
+          .join('\n'),
+    );
+  }
+
+  recordScore(afterScore, 'init');
+  trackInitCompleted('full-generation', afterScore.score);
+  displayScoreDelta(baselineScore, afterScore);
+  if (options.verbose) {
+    log(options.verbose, `Final score: ${afterScore.score}/100`);
+    for (const c of afterScore.checks.filter((ch) => !ch.passed)) {
+      log(
+        options.verbose,
+        `  Still failing: ${c.name} (${c.earnedPoints}/${c.maxPoints})${c.suggestion ? ` — ${c.suggestion}` : ''}`,
+      );
+    }
+  }
+
+  trackInitHookSelected('config-instructions');
+
+  // Done!
+  const done = chalk.green('✓');
+
+  console.log(chalk.bold.green('\n  agentic-setup is set up!\n'));
+
+  console.log(chalk.bold("  What's configured:\n"));
+  console.log(
+    `    ${done}  Continuous sync          ${chalk.dim('pre-commit hook keeps all agent configs in sync')}`,
+  );
+  console.log(
+    `    ${done}  Config generated         ${title(`${bin} score`)} ${chalk.dim('for full breakdown')}`,
+  );
+  if (hasLearnableAgent) {
+    console.log(
+      `    ${done}  Session learning         ${chalk.dim('agent learns from your feedback')}`,
+    );
+  }
+  console.log(chalk.bold('\n  What happens next:\n'));
+  console.log(chalk.dim('    Every commit will automatically sync your agent configs.'));
+  console.log(chalk.dim('    New team members can run `agentic-setup setup` in their terminal.\n'));
+
+  console.log(chalk.bold('  Explore:\n'));
+  console.log(`    ${title(`${bin} score`)}        Full scoring breakdown with improvement tips`);
+  console.log(`    ${title(`${bin} check`)}        CI gate — doctor + score + readiness`);
+  console.log(`    ${title(`${bin} undo`)}         Revert all changes from this run`);
+  console.log(`    ${title(`${bin} uninstall`)}    Remove agentic-setup completely`);
+  console.log('');
+
+  if (options.showTokens) {
+    displayTokenUsage();
+  }
+
+  if (!options.dryRun && fingerprint) {
+    const finalConfig = mergeProjectConfig({
+      ...readProjectConfig(),
+      agents: targetAgent as TargetAgentName[],
+      profile: resolveProfile(readProjectConfig().profile, fingerprint).profile,
+    });
+    writeProjectConfig(finalConfig);
+    if (finalConfig.run.generate) {
+      writeRunMd(process.cwd(), fingerprint);
+    }
+    writeContextIgnoreFiles(process.cwd());
+    writeContributingAiSection(process.cwd());
+    if (finalConfig.ci.workflow) {
+      try {
+        await ciInitCommand({ force: false });
+      } catch {
+        /* optional team workflow */
+      }
+    }
+    updateSetupMetadata({
+      cli_version: getPackageVersion(),
+      setup_profile: finalConfig.profile,
+    });
+  }
+
+  if (report) {
+    report.markStep('Finished');
+    const reportPath = path.join(process.cwd(), '.agentic-setup', 'debug-report.md');
+    report.write(reportPath);
+    console.log(
+      chalk.dim(`  Debug report written to ${path.relative(process.cwd(), reportPath)}\n`),
+    );
+  }
+}
