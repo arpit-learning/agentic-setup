@@ -8,6 +8,6 @@
 
 ## Testing
 
-- [ ] `npm run test` passes
-- [ ] `npx tsc --noEmit` passes
-- [ ] Tested manually with `agentic-setup init` / `agentic-setup score`
+- [ ] `npm run ci:check` passes locally
+- [ ] No high/critical `npm audit` findings introduced
+- [ ] Tested manually with `agentic-setup init` / `agentic-setup score` (if behavior changed)

@@ -17,7 +17,7 @@ jobs:
         with:
           script: |
             const branch = context.payload.pull_request.head.ref;
-            if (['master', 'next'].includes(branch)) return;
+            if (['main', 'beta', 'staging'].includes(branch)) return;
             try {
               await github.rest.git.deleteRef({
                 owner: context.repo.owner,

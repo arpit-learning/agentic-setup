@@ -1,3 +1,4 @@
+import fs from 'fs';
 import chalk from 'chalk';
 import { readManifest } from '../writers/manifest.js';
 import { loadConfig } from '../llm/config.js';

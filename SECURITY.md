@@ -12,7 +12,7 @@ We only support the latest published version of `agentic-setup`. Please upgrade 
 
 If you discover a security vulnerability, please report it responsibly.
 
-**Do not open a public issue.** Instead, email **security@rely.ai** with:
+**Do not open a public issue.** Instead, use [GitHub private vulnerability reporting](https://github.com/arpit-pm1/agentic-setup/security/advisories/new) with:
 
 - Description of the vulnerability
 - Steps to reproduce

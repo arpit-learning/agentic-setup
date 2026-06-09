@@ -17,6 +17,7 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
+    "ci:check": "npm run lint && npm run format:check && npx tsc --noEmit && npm test && npm run build",
     "publish:release": "npm publish --access public --provenance --tag latest",
     "publish:alpha": "npm publish --access public --tag alpha",
     "publish:beta": "npm publish --access public --tag beta",

@@ -38,7 +38,7 @@ on:
       branch:
         description: 'Branch to release from'
         required: true
-        default: 'master'
+        default: 'main'
         type: string
 
 env:

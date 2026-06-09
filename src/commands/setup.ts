@@ -14,7 +14,7 @@ import { hooksCommand } from './hooks.js';
 import type { TargetAgent } from './init-prompts.js';
 
 export interface SetupOptions {
-  agent?: TargetAgent[];
+  agent?: TargetAgentName[];
   dryRun?: boolean;
   skipCodegraph?: boolean;
   skipLlm?: boolean;
@@ -22,10 +22,8 @@ export interface SetupOptions {
   autoApprove?: boolean;
 }
 
-function toInitAgents(agents: TargetAgentName[]): TargetAgent[] {
-  return agents.filter((a): a is TargetAgent =>
-    ['claude', 'cursor', 'codex', 'opencode', 'github-copilot'].includes(a),
-  );
+function toInitAgents(agents: TargetAgentName[]): TargetAgent {
+  return agents;
 }
 
 export async function setupCommand(options: SetupOptions = {}): Promise<void> {
@@ -35,7 +33,7 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
   if (options.agent?.length) {
     config = mergeProjectConfig({
       ...config,
-      agents: options.agent as TargetAgentName[],
+      agents: options.agent,
     });
   }
 

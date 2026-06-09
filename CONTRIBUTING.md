@@ -51,7 +51,7 @@ Publishing is **manual** via GitHub Actions (**Actions → Publish Package → R
 | `release_type` | `release`, `alpha`, `beta`, `rc` | npm dist-tag and version shape |
 | `version_bump` | `patch`, `minor`, `major` | Semver bump when `release_type = release` |
 | `build_type` | `prod`, `beta`, `stage` | `prod` = lint + typecheck + test + build; `beta` = test + build; `stage` = build + smoke only |
-| `branch` | default `master` | Branch to release from |
+| `branch` | default `main` | Branch to release from |
 
 ### npm channels
 
@@ -73,12 +73,51 @@ Publishing is **manual** via GitHub Actions (**Actions → Publish Package → R
 npx agentic-setup@alpha score
 ```
 
+## Branch model
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable integration; release source for `latest` npm tag |
+| `beta` | Pre-release integration and testing |
+| `staging` | Active development / feature integration |
+
+Open PRs into `staging`, `beta`, or `main` depending on your change. CI runs on all three.
+
+## CI / PR checks
+
+Every pull request triggers parallel GitHub Actions jobs:
+
+| Check | What it runs |
+|-------|----------------|
+| `lint` | ESLint + Prettier format check |
+| `typecheck` | `tsc --noEmit` |
+| `test` | Vitest (Ubuntu + Windows, Node 20 + 22) |
+| `build` | `tsup` build + CLI smoke test |
+| `security-audit` | `npm audit --audit-level=high` |
+| `score` | Dogfooded `agentic-setup score --compare` with PR comment |
+| `analyze` (CodeQL) | Static security analysis |
+
+Run the same gate locally before pushing:
+
+```bash
+npm run ci:check
+npm audit --audit-level=high
+```
+
+### Branch protection (repo settings)
+
+After workflows are enabled on GitHub, configure **Settings → Branches** for `main` (and optionally `beta`):
+
+**Required status checks:** `lint`, `typecheck`, `test`, `build`, `security-audit`, `score`, `analyze` (CodeQL — enable after first run)
+
+**Recommended:** require 1 PR review, dismiss stale approvals on new commits, enable Dependabot security updates.
+
 ## Pull requests
 
-1. Fork the repo and create a branch from `master`
+1. Fork the repo and create a branch from `main` (or `staging` for in-flight work)
 2. Make your changes
 3. Add tests for new functionality
-4. Run `npm run test` and `npx tsc --noEmit`
+4. Run `npm run ci:check` locally
 5. Use [conventional commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `refactor:`, `chore:`
 6. For risky changes, publish an `alpha` / `beta` / `rc` build from the **Publish Package** workflow before cutting a stable `release`
 

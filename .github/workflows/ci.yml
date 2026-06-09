@@ -2,27 +2,55 @@ name: CI
 
 on:
   pull_request:
-    branches: [master, next]
+    branches: [main, beta, staging]
   push:
-    branches: [master, next]
+    branches: [main, beta, staging]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+
   test:
+    name: test
     strategy:
       matrix:
-        # Node 25 added to catch the libuv UV_HANDLE_CLOSING + DEP0190
-        # regressions documented in #192/#194. Keep 20+22 for stable LTS coverage.
         os: [ubuntu-latest, windows-latest]
-        node: [20, 22, 25]
+        node: [20, 22]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    # Node 25 was just added to the matrix; keep it non-blocking for one cycle
-    # in case actions/setup-node@v4 doesn't have a Windows release ready yet.
-    # Drop this once Node 25 has shown up green at least once.
-    continue-on-error: ${{ matrix.node == 25 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,20 +60,39 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - run: npm test
+        env:
+          AGENTIC_SETUP_SKIP_UPDATE_CHECK: "1"
+          AGENTIC_SETUP_TELEMETRY_DISABLED: "1"
 
-      - name: Lint
-        run: npm run lint
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Type check
-        run: npx tsc --noEmit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-      - name: Run tests
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
+      - run: npm ci
+      - run: npm run build
       - name: Smoke test
         run: node dist/bin.js --version
         env:
           AGENTIC_SETUP_SKIP_UPDATE_CHECK: "1"
+
+  security-audit:
+    name: security-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm audit --audit-level=high
