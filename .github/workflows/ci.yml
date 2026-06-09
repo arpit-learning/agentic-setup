@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master, next]
+  push:
+    branches: [master, next]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        # Node 25 added to catch the libuv UV_HANDLE_CLOSING + DEP0190
+        # regressions documented in #192/#194. Keep 20+22 for stable LTS coverage.
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22, 25]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    # Node 25 was just added to the matrix; keep it non-blocking for one cycle
+    # in case actions/setup-node@v4 doesn't have a Windows release ready yet.
+    # Drop this once Node 25 has shown up green at least once.
+    continue-on-error: ${{ matrix.node == 25 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke test
+        run: node dist/bin.js --version
+        env:
+          AGENTIC_SETUP_SKIP_UPDATE_CHECK: "1"

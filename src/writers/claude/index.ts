@@ -1,0 +1,65 @@
+import fs from 'fs';
+import path from 'path';
+import { appendManagedBlocks, type TargetAgent } from '../pre-commit-block.js';
+
+interface ClaudeConfig {
+  claudeMd: string;
+  rules?: Array<{ filename: string; content: string }>;
+  skills?: Array<{ name: string; description: string; content: string; paths?: string[] }>;
+  mcpServers?: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>;
+  activeTargets?: TargetAgent[];
+}
+
+export function writeClaudeConfig(config: ClaudeConfig): string[] {
+  const written: string[] = [];
+
+  fs.writeFileSync(
+    'CLAUDE.md',
+    appendManagedBlocks(config.claudeMd, 'claude', config.activeTargets),
+  );
+  written.push('CLAUDE.md');
+
+  if (config.rules?.length) {
+    const rulesDir = path.join('.claude', 'rules');
+    if (!fs.existsSync(rulesDir)) fs.mkdirSync(rulesDir, { recursive: true });
+    for (const rule of config.rules) {
+      const rulePath = path.join(rulesDir, rule.filename);
+      fs.writeFileSync(rulePath, rule.content);
+      written.push(rulePath);
+    }
+  }
+
+  if (config.skills?.length) {
+    for (const skill of config.skills) {
+      const skillDir = path.join('.claude', 'skills', skill.name);
+      if (!fs.existsSync(skillDir)) fs.mkdirSync(skillDir, { recursive: true });
+      const skillPath = path.join(skillDir, 'SKILL.md');
+      const frontmatterLines = ['---', `name: ${skill.name}`, `description: ${skill.description}`];
+      if (skill.paths?.length) {
+        frontmatterLines.push('paths:');
+        for (const p of skill.paths) {
+          frontmatterLines.push(`  - ${p}`);
+        }
+      }
+      frontmatterLines.push('---', '');
+      const frontmatter = frontmatterLines.join('\n');
+      fs.writeFileSync(skillPath, frontmatter + skill.content);
+      written.push(skillPath);
+    }
+  }
+
+  if (config.mcpServers && Object.keys(config.mcpServers).length > 0) {
+    let existingServers: Record<string, unknown> = {};
+    try {
+      if (fs.existsSync('.mcp.json')) {
+        const existing = JSON.parse(fs.readFileSync('.mcp.json', 'utf-8'));
+        if (existing.mcpServers) existingServers = existing.mcpServers;
+      }
+    } catch {}
+    const mergedServers = { ...existingServers, ...config.mcpServers };
+    fs.writeFileSync('.mcp.json', JSON.stringify({ mcpServers: mergedServers }, null, 2));
+    written.push('.mcp.json');
+  }
+
+  return written;
+}

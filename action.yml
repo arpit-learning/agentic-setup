@@ -1,0 +1,42 @@
+name: 'agentic-setup Score'
+description: 'Score your AI agent configuration quality, sync configs across agent formats, and comment on PRs'
+branding:
+  icon: 'zap'
+  color: 'blue'
+
+inputs:
+  agent:
+    description: 'Target agent: claude, cursor, or codex'
+    default: 'claude'
+  fail-below:
+    description: 'Minimum score to pass (0-100). Action fails if score is below this.'
+    default: '0'
+  comment:
+    description: 'Post/update a comment on the PR with the score'
+    default: 'true'
+  auto-refresh:
+    description: 'Run agentic-setup refresh and commit updated configs if stale'
+    default: 'false'
+  mode:
+    description: 'Action mode: score (default) or sync (creates PR with refreshed configs)'
+    default: 'score'
+  sync-branch-prefix:
+    description: 'Branch prefix for sync PRs'
+    default: 'agentic-setup/sync'
+  github-token:
+    description: 'GitHub token for PR comments and sync PRs'
+    default: '${{ github.token }}'
+
+outputs:
+  score:
+    description: 'Current score (0-100)'
+  grade:
+    description: 'Letter grade (A-F)'
+  delta:
+    description: 'Score change from base branch (e.g. +5 or -3)'
+  sync-pr:
+    description: 'URL of the sync PR created (sync mode only)'
+
+runs:
+  using: 'node20'
+  main: 'index.cjs'

@@ -1,0 +1,7 @@
+dist/
+coverage/
+node_modules/
+index.cjs
+.agentic-setup/
+*.md
+package-lock.json

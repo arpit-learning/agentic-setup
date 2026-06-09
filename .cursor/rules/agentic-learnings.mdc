@@ -1,0 +1,6 @@
+---
+description: Reference session-learned patterns from AGENTIC_LEARNINGS.md
+alwaysApply: true
+---
+Read `AGENTIC_LEARNINGS.md` for patterns and anti-patterns learned from previous sessions.
+These are auto-extracted from real tool usage — treat them as project-specific rules.
