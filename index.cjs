@@ -96,7 +96,9 @@ function buildComment(result, baseResult, agent) {
     lines.push('| Check | Points | Suggestion |');
     lines.push('|-------|--------|------------|');
     for (const check of failing) {
-      const suggestion = (check.suggestion || check.detail || '').replace(/\|/g, '\\|');
+      const suggestion = (check.suggestion || check.detail || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/\|/g, '\\|');
       lines.push(`| ${check.name || check.id} | ${formatCheckPoints(check)} | ${suggestion} |`);
     }
     lines.push('');
