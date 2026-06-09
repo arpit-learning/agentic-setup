@@ -12,6 +12,7 @@ import {
   CURSOR_ONLY_CHECKS,
   CLAUDE_ONLY_CHECKS,
   CODEX_ONLY_CHECKS,
+  OPENCODE_ONLY_CHECKS,
   COPILOT_ONLY_CHECKS,
   BOTH_ONLY_CHECKS,
   NON_CODEX_CHECKS,
@@ -80,6 +81,7 @@ function filterChecksForTarget(checks: Check[], target: TargetAgent): Check[] {
     if (CLAUDE_ONLY_CHECKS.has(c.id)) return target.includes('claude');
     if (CURSOR_ONLY_CHECKS.has(c.id)) return target.includes('cursor');
     if (CODEX_ONLY_CHECKS.has(c.id)) return target.includes('codex') || target.includes('opencode');
+    if (OPENCODE_ONLY_CHECKS.has(c.id)) return target.includes('opencode');
     if (COPILOT_ONLY_CHECKS.has(c.id)) return target.includes('github-copilot');
     if (BOTH_ONLY_CHECKS.has(c.id)) return target.includes('claude') && target.includes('cursor');
     if (NON_CODEX_CHECKS.has(c.id))
