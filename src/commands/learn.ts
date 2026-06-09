@@ -1,0 +1,784 @@
+import fs from 'fs';
+import path from 'path';
+import chalk from 'chalk';
+import { quoteForWindows } from '../utils/windows.js';
+import { readStdin } from '../learner/stdin.js';
+import {
+  appendEvent,
+  appendPromptEvent,
+  readAllEvents,
+  readState,
+  writeState,
+  clearSession,
+  resetState,
+  getEventCount,
+  acquireFinalizeLock,
+  releaseFinalizeLock,
+} from '../learner/storage.js';
+import type { ToolEvent, PromptEvent } from '../learner/storage.js';
+import {
+  writeLearnedContent,
+  readLearnedSection,
+  readPersonalLearnings,
+  migrateInlineLearnings,
+  addLearning,
+} from '../learner/writer.js';
+import { sanitizeSecrets } from '../lib/sanitize.js';
+import { writeFinalizeSummary } from '../lib/notifications.js';
+import {
+  areLearningHooksInstalled,
+  installLearningHooks,
+  removeLearningHooks,
+  areCursorLearningHooksInstalled,
+  installCursorLearningHooks,
+  removeCursorLearningHooks,
+} from '../lib/learning-hooks.js';
+import { readExistingConfigs } from '../fingerprint/existing-config.js';
+import { analyzeEvents, calculateSessionWaste } from '../ai/learn.js';
+import { loadConfig } from '../llm/config.js';
+import { validateModel } from '../llm/index.js';
+import { recordSession, formatROISummary, readROIStats, writeROIStats } from '../learner/roi.js';
+import type { LearningCostEntry, SessionROISummary } from '../learner/roi.js';
+import {
+  matchLearningsToFailures,
+  semanticMatchFallback,
+  updateActivations,
+  findStaleLearnings,
+} from '../learner/attribution.js';
+import {
+  PERSONAL_LEARNINGS_FILE,
+  getLearningDir,
+  LEARNING_FINALIZE_LOG,
+  LEARNING_LAST_ERROR_FILE,
+} from '../constants.js';
+import { displayProductName } from '../lib/resolve-cli.js';
+import {
+  isAgenticSetupSubprocess,
+  isHookCascadeFromUserClaudeSession,
+} from '../lib/subprocess-sentinel.js';
+import {
+  trackLearnSessionAnalyzed,
+  trackLearnROISnapshot,
+  trackLearnNewLearning,
+} from '../telemetry/events.js';
+
+/** Minimum tool events required before running LLM analysis. */
+const MIN_EVENTS_FOR_ANALYSIS = 25;
+const MIN_EVENTS_AUTO = 10;
+const AUTO_SETTLE_MS = 200;
+const INCREMENTAL_INTERVAL = 50;
+
+function writeFinalizeError(message: string): void {
+  try {
+    const errorPath = path.join(getLearningDir(), LEARNING_LAST_ERROR_FILE);
+    if (!fs.existsSync(getLearningDir())) fs.mkdirSync(getLearningDir(), { recursive: true });
+    fs.writeFileSync(
+      errorPath,
+      JSON.stringify(
+        {
+          timestamp: new Date().toISOString(),
+          error: message,
+          pid: process.pid,
+        },
+        null,
+        2,
+      ),
+    );
+  } catch {
+    // Best effort
+  }
+}
+
+function readFinalizeError(): { timestamp: string; error: string } | null {
+  try {
+    const errorPath = path.join(getLearningDir(), LEARNING_LAST_ERROR_FILE);
+    if (!fs.existsSync(errorPath)) return null;
+    return JSON.parse(fs.readFileSync(errorPath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+export async function learnObserveCommand(options: { failure?: boolean; prompt?: boolean }) {
+  // Skip in agentic-spawned headless sessions to prevent recursive hook execution.
+  if (isAgenticSetupSubprocess()) return;
+  try {
+    const raw = await readStdin();
+    if (!raw.trim()) return;
+
+    const hookData = JSON.parse(raw);
+    const sessionId = hookData.session_id || hookData.conversation_id || 'unknown';
+
+    if (options.prompt) {
+      const content = String(hookData.prompt_content || hookData.content || hookData.prompt || '');
+
+      // Skip agentic-setup's own LLM calls to prevent recursive feedback loop —
+      // finalize sends events as a prompt, which the hook would capture back,
+      // doubling the file size on every cycle. All agentic-setup system prompts
+      // start with "You are an expert" (see src/ai/prompts.ts).
+      if (/^You are an expert\b/i.test(content)) {
+        return;
+      }
+
+      const event: PromptEvent = {
+        timestamp: new Date().toISOString(),
+        session_id: sessionId,
+        hook_event_name: 'UserPromptSubmit',
+        prompt_content: sanitizeSecrets(content),
+        cwd: hookData.cwd || process.cwd(),
+      };
+      appendPromptEvent(event);
+
+      const state = readState();
+      state.eventCount++;
+      if (!state.sessionId) state.sessionId = sessionId;
+      writeState(state);
+      return;
+    }
+
+    const event: ToolEvent = {
+      timestamp: new Date().toISOString(),
+      session_id: sessionId,
+      hook_event_name: options.failure ? 'PostToolUseFailure' : 'PostToolUse',
+      tool_name: hookData.tool_name || 'unknown',
+      tool_input: hookData.tool_input || {},
+      tool_response: hookData.tool_response || hookData.tool_output || {},
+      tool_use_id: hookData.tool_use_id || '',
+      cwd: hookData.cwd || process.cwd(),
+    };
+
+    appendEvent(event);
+
+    const state = readState();
+    state.eventCount++;
+    if (!state.sessionId) state.sessionId = sessionId;
+    writeState(state);
+
+    // Trigger incremental learning mid-session every INCREMENTAL_INTERVAL events
+    const eventsSinceLastAnalysis = state.eventCount - (state.lastAnalysisEventCount || 0);
+    if (eventsSinceLastAnalysis >= INCREMENTAL_INTERVAL) {
+      try {
+        const { resolveCliBinary, isNpxResolution } = await import('../lib/resolve-cli.js');
+        const bin = resolveCliBinary();
+        const { spawn } = await import('child_process');
+        const logPath = path.join(getLearningDir(), LEARNING_FINALIZE_LOG);
+        if (!fs.existsSync(getLearningDir())) fs.mkdirSync(getLearningDir(), { recursive: true });
+        const logFd = fs.openSync(logPath, 'a');
+        // resolveCliBinary() returns multi-word strings only for npx invocations:
+        // '<npx_path> --yes agentic-setup'. The npx path itself may contain
+        // spaces, so split(' ') is fragile. Detect the known suffix instead.
+        const NPX_SUFFIX = ' --yes agentic-setup';
+        const [exe, binArgs] = isNpxResolution()
+          ? [bin.slice(0, -NPX_SUFFIX.length) || 'npx', ['--yes', 'agentic-setup']]
+          : [bin, []];
+        // Windows requires shell:true to spawn .cmd/.bat (CVE-2024-27980 hardening),
+        // and shell:true skips Node's exe quoting — quote here so paths like
+        // `C:\Users\First Last\AppData\Roaming\npm\agentic-setup.cmd` survive cmd.exe parsing.
+        const isWin = process.platform === 'win32';
+        const argsArray = [...binArgs, 'learn', 'finalize', '--auto', '--incremental'];
+        const child = isWin
+          ? spawn([`"${exe}"`, ...argsArray.map(quoteForWindows)].join(' '), {
+              detached: true,
+              stdio: ['ignore', logFd, logFd],
+              shell: true,
+            })
+          : spawn(exe, argsArray, {
+              detached: true,
+              stdio: ['ignore', logFd, logFd],
+            });
+        // If spawn fails the child never advances lastAnalysisEventCount, so without
+        // this guard every subsequent observe call past the threshold re-fires the
+        // broken spawn. Bump the counter on error to back off until the next interval.
+        child.on('error', () => {
+          try {
+            const s = readState();
+            s.lastAnalysisEventCount = s.eventCount;
+            writeState(s);
+          } catch {
+            // Best effort
+          }
+        });
+        child.unref();
+        fs.closeSync(logFd);
+      } catch {
+        // Best effort — don't block the hook
+      }
+    }
+  } catch {
+    // Hook observers must never crash or produce output
+  }
+}
+
+export async function learnFinalizeCommand(options?: {
+  force?: boolean;
+  auto?: boolean;
+  incremental?: boolean;
+}) {
+  const isAuto = options?.auto === true;
+  const isIncremental = options?.incremental === true;
+
+  // Skip in agentic-spawned headless sessions to prevent recursive hook execution.
+  if (isAuto && isAgenticSetupSubprocess()) return;
+
+  // F-P0-9: when --auto, also skip if we detect we're firing as a SessionEnd
+  // hook inside a user-initiated `claude -p`. Doing real LLM work here would
+  // spawn ANOTHER claude session, which Claude Code's hook timeout cancels —
+  // producing visible "Hook cancelled" stderr noise on every interactive
+  // claude -p the user runs in a agentic-equipped repo. Manual
+  // 'agentic-setup learn finalize' (no --auto) still works.
+  if (isAuto && isHookCascadeFromUserClaudeSession()) return;
+
+  if (!options?.force && !isAuto) {
+    const { isAgenticSetupRunning } = await import('../lib/lock.js');
+    if (isAgenticSetupRunning()) {
+      if (!isAuto)
+        console.log(
+          chalk.dim('agentic-setup: skipping finalize — another agentic-setup process is running'),
+        );
+      return;
+    }
+  }
+
+  // Wait for event hooks to finish writing (race condition guard)
+  if (isAuto) {
+    await new Promise((r) => setTimeout(r, AUTO_SETTLE_MS));
+  }
+
+  // Prevent concurrent finalize from parallel sessions
+  if (!acquireFinalizeLock()) {
+    if (!isAuto)
+      console.log(chalk.dim('agentic-setup: skipping finalize — another finalize is in progress'));
+    return;
+  }
+
+  let analyzed = false;
+  try {
+    const config = loadConfig();
+    if (!config) {
+      if (isAuto) return; // Graceful degradation: preserve events for later
+      console.log(
+        chalk.yellow(
+          `agentic-setup: no LLM provider configured — run \`${displayProductName()} config\` first`,
+        ),
+      );
+      clearSession();
+      resetState();
+      return;
+    }
+
+    const allEvents = readAllEvents();
+    const threshold = isAuto ? MIN_EVENTS_AUTO : MIN_EVENTS_FOR_ANALYSIS;
+    if (allEvents.length < threshold) {
+      if (!isAuto)
+        console.log(
+          chalk.dim(
+            `agentic-setup: ${allEvents.length}/${threshold} events recorded — need more before analysis`,
+          ),
+        );
+      return;
+    }
+
+    await validateModel({ fast: true });
+
+    migrateInlineLearnings();
+
+    // For incremental analysis, only analyze events after the last analysis point
+    const state = readState();
+    const analysisOffset = isIncremental ? state.lastAnalysisEventCount || 0 : 0;
+    const events = analysisOffset > 0 ? allEvents.slice(analysisOffset) : allEvents;
+
+    if (events.length < threshold) {
+      if (!isAuto)
+        console.log(
+          chalk.dim(
+            `agentic-setup: ${events.length}/${threshold} new events since last analysis — need more`,
+          ),
+        );
+      return;
+    }
+
+    const existingConfigs = readExistingConfigs(process.cwd());
+    const existingLearnedSection = readLearnedSection();
+    const existingPersonalLearnings = readPersonalLearnings();
+    const existingSkills = existingConfigs.claudeSkills || [];
+
+    const response = await analyzeEvents(
+      events,
+      existingConfigs.claudeMd || '',
+      existingLearnedSection,
+      existingSkills,
+      existingPersonalLearnings,
+    );
+
+    analyzed = true;
+
+    const waste = calculateSessionWaste(allEvents);
+    const existingLearnedItems = existingLearnedSection
+      ? existingLearnedSection.split('\n').filter((l) => l.startsWith('- ')).length
+      : 0;
+    const hadLearnings = existingLearnedItems > 0;
+    let newLearningsProduced = 0;
+    let roiLearningEntries: LearningCostEntry[] = [];
+
+    if (response.claudeMdLearnedSection || response.skills?.length) {
+      const result = writeLearnedContent({
+        claudeMdLearnedSection: response.claudeMdLearnedSection,
+        skills: response.skills,
+      });
+      newLearningsProduced = result.newItemCount;
+
+      if (result.newItemCount > 0) {
+        if (isAuto) {
+          writeFinalizeSummary({
+            timestamp: new Date().toISOString(),
+            newItemCount: result.newItemCount,
+            newItems: result.newItems,
+            wasteTokens: waste.totalWasteTokens,
+          });
+        } else {
+          const wasteLabel =
+            waste.totalWasteTokens > 0
+              ? ` (~${waste.totalWasteTokens.toLocaleString()} wasted tokens captured)`
+              : '';
+          console.log(
+            chalk.dim(
+              `agentic-setup: learned ${result.newItemCount} new pattern${result.newItemCount === 1 ? '' : 's'}${wasteLabel}`,
+            ),
+          );
+          for (const item of result.newItems) {
+            console.log(chalk.dim(`  + ${item.replace(/^- /, '').slice(0, 80)}`));
+          }
+        }
+
+        // Record per-learning cost entries with explanations
+        const wastePerLearning = Math.round(waste.totalWasteTokens / result.newItemCount);
+        const TYPE_RE = /^\*\*\[([^\]]+)\]\*\*/;
+        const explanations = response.explanations || [];
+        const learningEntries: LearningCostEntry[] = result.newItems.map((item, idx) => {
+          const clean = item.replace(/^- /, '');
+          const typeMatch = clean.match(TYPE_RE);
+          return {
+            timestamp: new Date().toISOString(),
+            observationType: typeMatch ? typeMatch[1] : 'unknown',
+            summary: clean.replace(TYPE_RE, '').trim().slice(0, 80),
+            wasteTokens: wastePerLearning,
+            sourceEventCount: events.length,
+            explanation: explanations[idx] || null,
+          };
+        });
+
+        for (const entry of learningEntries) {
+          trackLearnNewLearning({
+            observationType: entry.observationType,
+            wasteTokens: entry.wasteTokens,
+            sourceEventCount: entry.sourceEventCount,
+          });
+        }
+
+        roiLearningEntries = learningEntries;
+      }
+    }
+
+    // Compute task-level metrics from LLM response
+    const tasks = response.tasks || [];
+    let taskSuccessCount = 0;
+    let taskCorrectionCount = 0;
+    let taskFailureCount = 0;
+    for (const t of tasks) {
+      if (t.outcome === 'success') taskSuccessCount++;
+      else if (t.outcome === 'corrected') taskCorrectionCount++;
+      else if (t.outcome === 'failed') taskFailureCount++;
+    }
+
+    // Record session ROI summary + learnings in a single write
+    const sessionSummary: SessionROISummary = {
+      timestamp: new Date().toISOString(),
+      sessionId: state.sessionId || 'unknown',
+      eventCount: allEvents.length,
+      failureCount: waste.failureCount,
+      promptCount: waste.promptCount,
+      wasteSeconds: Math.round(waste.totalWasteSeconds),
+      hadLearningsAvailable: hadLearnings,
+      learningsCount: existingLearnedItems,
+      newLearningsProduced,
+      taskCount: tasks.length > 0 ? tasks.length : undefined,
+      taskSuccessCount: tasks.length > 0 ? taskSuccessCount : undefined,
+      taskCorrectionCount: tasks.length > 0 ? taskCorrectionCount : undefined,
+      taskFailureCount: tasks.length > 0 ? taskFailureCount : undefined,
+    };
+    const roiStats = recordSession(sessionSummary, roiLearningEntries);
+
+    // Attribution: match existing learnings against session failure events
+    if (roiStats.learnings.length > 0 && waste.failureCount > 0) {
+      const failureEvents = allEvents.filter(
+        (e) => e.hook_event_name === 'PostToolUseFailure',
+      ) as ToolEvent[];
+
+      let attribution = matchLearningsToFailures(roiStats.learnings, failureEvents);
+
+      if (attribution.matchedIndices.length === 0 && failureEvents.length > 0) {
+        attribution = await semanticMatchFallback(roiStats.learnings, failureEvents);
+      }
+
+      if (attribution.matchedIndices.length > 0) {
+        updateActivations(roiStats, attribution.matchedIndices);
+        writeROIStats(roiStats);
+      }
+    }
+
+    // Emit PostHog events
+    trackLearnSessionAnalyzed({
+      eventCount: allEvents.length,
+      failureCount: waste.failureCount,
+      correctionCount: waste.promptCount,
+      hadLearningsAvailable: hadLearnings,
+      learningsAvailableCount: existingLearnedItems,
+      newLearningsProduced,
+      wasteTokens: waste.totalWasteTokens,
+      wasteSeconds: Math.round(waste.totalWasteSeconds),
+    });
+
+    const t = roiStats.totals;
+    const totalSessions = t.totalSessionsWithLearnings + t.totalSessionsWithoutLearnings;
+    trackLearnROISnapshot({
+      totalWasteTokens: t.totalWasteTokens,
+      totalWasteSeconds: t.totalWasteSeconds,
+      totalSessions,
+      sessionsWithLearnings: t.totalSessionsWithLearnings,
+      sessionsWithoutLearnings: t.totalSessionsWithoutLearnings,
+      failureRateWithLearnings:
+        t.totalSessionsWithLearnings > 0
+          ? t.totalFailuresWithLearnings / t.totalSessionsWithLearnings
+          : 0,
+      failureRateWithoutLearnings:
+        t.totalSessionsWithoutLearnings > 0
+          ? t.totalFailuresWithoutLearnings / t.totalSessionsWithoutLearnings
+          : 0,
+      estimatedSavingsTokens: t.estimatedSavingsTokens,
+      estimatedSavingsSeconds: t.estimatedSavingsSeconds,
+      learningCount: roiStats.learnings.length,
+    });
+
+    // Check for stale learnings (never activated after enough sessions)
+    if (!isIncremental) {
+      const staleLearnings = findStaleLearnings(roiStats);
+      if (staleLearnings.length > 0 && !isAuto) {
+        console.log(
+          chalk.yellow(
+            `agentic-setup: ${staleLearnings.length} learning${staleLearnings.length === 1 ? '' : 's'} never activated — run \`${displayProductName()} learn list --verbose\` to review`,
+          ),
+        );
+      }
+    }
+
+    // Show savings summary if we have history
+    if (!isAuto && t.estimatedSavingsTokens > 0) {
+      const totalLearnings = existingLearnedItems + newLearningsProduced;
+      console.log(
+        chalk.dim(
+          `agentic-setup: ${totalLearnings} learnings active — est. ~${t.estimatedSavingsTokens.toLocaleString()} tokens saved across ${t.totalSessionsWithLearnings} sessions`,
+        ),
+      );
+    }
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    if (options?.force && !isAuto) {
+      console.error(chalk.red('agentic-setup: finalize failed —'), errorMsg);
+    }
+    writeFinalizeError(errorMsg);
+  } finally {
+    if (analyzed) {
+      if (isIncremental) {
+        // Keep the session going — just mark where we analyzed up to
+        const state = readState();
+        state.lastAnalysisEventCount = state.eventCount;
+        state.lastAnalysisTimestamp = new Date().toISOString();
+        writeState(state);
+      } else {
+        clearSession();
+        resetState();
+      }
+    }
+    releaseFinalizeLock();
+  }
+}
+
+export async function learnInstallCommand() {
+  let anyInstalled = false;
+
+  if (fs.existsSync('.claude')) {
+    const r = installLearningHooks();
+    if (r.installed) {
+      console.log(chalk.green('✓') + ' Claude Code learning hooks installed');
+      anyInstalled = true;
+    } else if (r.alreadyInstalled) {
+      console.log(chalk.dim('  Claude Code hooks already installed'));
+    }
+  }
+
+  if (fs.existsSync('.cursor')) {
+    const r = installCursorLearningHooks();
+    if (r.installed) {
+      console.log(chalk.green('✓') + ' Cursor learning hooks installed');
+      anyInstalled = true;
+    } else if (r.alreadyInstalled) {
+      console.log(chalk.dim('  Cursor hooks already installed'));
+    }
+  }
+
+  if (!fs.existsSync('.claude') && !fs.existsSync('.cursor')) {
+    console.log(chalk.yellow('No .claude/ or .cursor/ directory found.'));
+    console.log(
+      chalk.dim(`  Run \`${displayProductName()} init\` first, or create the directory manually.`),
+    );
+    return;
+  }
+
+  if (anyInstalled) {
+    console.log(
+      chalk.dim(
+        `  Tool usage will be recorded and learnings extracted after ≥${MIN_EVENTS_FOR_ANALYSIS} events.`,
+      ),
+    );
+    console.log(chalk.dim('  Learnings written to AGENTIC_LEARNINGS.md.'));
+  }
+}
+
+export async function learnRemoveCommand() {
+  let anyRemoved = false;
+
+  const r1 = removeLearningHooks();
+  if (r1.removed) {
+    console.log(chalk.green('✓') + ' Claude Code learning hooks removed');
+    anyRemoved = true;
+  }
+
+  const r2 = removeCursorLearningHooks();
+  if (r2.removed) {
+    console.log(chalk.green('✓') + ' Cursor learning hooks removed');
+    anyRemoved = true;
+  }
+
+  if (!anyRemoved) {
+    console.log(chalk.dim('No learning hooks found.'));
+  }
+}
+
+export async function learnStatusCommand() {
+  const claudeInstalled = areLearningHooksInstalled();
+  const cursorInstalled = areCursorLearningHooksInstalled();
+  const state = readState();
+  const eventCount = getEventCount();
+
+  console.log(chalk.bold('Session Learning Status'));
+  console.log();
+
+  if (claudeInstalled) {
+    console.log(chalk.green('✓') + ' Claude Code hooks ' + chalk.green('installed'));
+  } else {
+    console.log(chalk.dim('✗') + ' Claude Code hooks ' + chalk.dim('not installed'));
+  }
+
+  if (cursorInstalled) {
+    console.log(chalk.green('✓') + ' Cursor hooks ' + chalk.green('installed'));
+  } else {
+    console.log(chalk.dim('✗') + ' Cursor hooks ' + chalk.dim('not installed'));
+  }
+
+  if (!claudeInstalled && !cursorInstalled) {
+    console.log(
+      chalk.dim(`  Run \`${displayProductName()} learn install\` to enable session learning.`),
+    );
+  }
+
+  console.log();
+  console.log(`Events recorded: ${chalk.cyan(String(eventCount))}`);
+  console.log(`Threshold for analysis: ${chalk.cyan(String(MIN_EVENTS_FOR_ANALYSIS))}`);
+
+  if (state.lastAnalysisTimestamp) {
+    console.log(`Last analysis: ${chalk.cyan(state.lastAnalysisTimestamp)}`);
+  } else {
+    console.log(`Last analysis: ${chalk.dim('none')}`);
+  }
+
+  const lastError = readFinalizeError();
+  if (lastError) {
+    console.log(`Last error: ${chalk.red(lastError.error)}`);
+    console.log(chalk.dim(`  at ${lastError.timestamp}`));
+    const logPath = path.join(getLearningDir(), LEARNING_FINALIZE_LOG);
+    if (fs.existsSync(logPath)) {
+      console.log(chalk.dim(`  Full log: ${logPath}`));
+    }
+  }
+
+  const learnedSection = readLearnedSection();
+  if (learnedSection) {
+    const lineCount = learnedSection.split('\n').filter(Boolean).length;
+    console.log(`\nLearned items in AGENTIC_LEARNINGS.md: ${chalk.cyan(String(lineCount))}`);
+  }
+
+  const roiStats = readROIStats();
+  const roiSummary = formatROISummary(roiStats);
+  if (roiSummary) {
+    console.log();
+    console.log(chalk.bold(roiSummary.split('\n')[0]));
+    for (const line of roiSummary.split('\n').slice(1)) {
+      console.log(line);
+    }
+  }
+}
+
+interface LearningItem {
+  text: string;
+  source: 'project' | 'personal';
+  index: number;
+}
+
+function getAllLearnings(): LearningItem[] {
+  const items: LearningItem[] = [];
+  let idx = 0;
+
+  const projectSection = readLearnedSection();
+  if (projectSection) {
+    for (const line of projectSection.split('\n').filter((l) => l.startsWith('- '))) {
+      items.push({ text: line, source: 'project', index: idx++ });
+    }
+  }
+
+  const personalSection = readPersonalLearnings();
+  if (personalSection) {
+    for (const line of personalSection.split('\n').filter((l) => l.startsWith('- '))) {
+      items.push({ text: line, source: 'personal', index: idx++ });
+    }
+  }
+
+  return items;
+}
+
+export async function learnListCommand(options?: { verbose?: boolean }) {
+  const items = getAllLearnings();
+
+  if (items.length === 0) {
+    console.log(
+      chalk.dim(`No learnings yet. Run \`${displayProductName()} learn install\` to start.`),
+    );
+    return;
+  }
+
+  const roiStats = options?.verbose ? readROIStats() : null;
+
+  console.log(chalk.bold(`\n  Learnings (${items.length})\n`));
+
+  for (const item of items) {
+    const tag = item.source === 'personal' ? chalk.magenta('[personal]') : chalk.blue('[project]');
+    const display = item.text.replace(/^- /, '').slice(0, 100);
+    console.log(`  ${chalk.dim(String(item.index + 1).padStart(2, ' '))}. ${tag} ${display}`);
+
+    if (options?.verbose && roiStats) {
+      const match = roiStats.learnings.find((l) => display.includes(l.summary.slice(0, 40)));
+      if (match) {
+        const activations = match.activationCount ?? 0;
+        const stale = activations === 0 && roiStats.sessions.length >= 10;
+        const activationLabel = stale
+          ? chalk.yellow(`${activations} activations [stale]`)
+          : chalk.dim(`${activations} activation${activations === 1 ? '' : 's'}`);
+        console.log(`      ${activationLabel}`);
+        if (match.explanation) {
+          console.log(`      ${chalk.dim('Why: ' + match.explanation.slice(0, 80))}`);
+        }
+      }
+    }
+  }
+  console.log('');
+}
+
+export async function learnDeleteCommand(indexStr: string) {
+  const index = parseInt(indexStr, 10);
+  if (isNaN(index) || index < 1) {
+    console.log(
+      chalk.red(
+        `Invalid index: "${indexStr}". Use a number from \`${displayProductName()} learn list\`.`,
+      ),
+    );
+    return;
+  }
+
+  const items = getAllLearnings();
+  const targetIdx = index - 1; // User sees 1-based
+
+  if (targetIdx >= items.length) {
+    console.log(chalk.red(`Index ${index} is out of range. You have ${items.length} learnings.`));
+    return;
+  }
+
+  const item = items[targetIdx];
+  const filePath = item.source === 'personal' ? PERSONAL_LEARNINGS_FILE : 'AGENTIC_LEARNINGS.md';
+
+  if (!fs.existsSync(filePath)) {
+    console.log(chalk.red('Learnings file not found.'));
+    return;
+  }
+
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const lines = content.split('\n');
+
+  // Find which bullet within this file corresponds to our item
+  const bulletsOfSource = items.filter((i) => i.source === item.source);
+  const posInFile = bulletsOfSource.indexOf(item);
+
+  // Find the Nth bullet line in the file
+  let bulletsSeen = 0;
+  let lineToRemove = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('- ')) {
+      if (bulletsSeen === posInFile) {
+        lineToRemove = i;
+        break;
+      }
+      bulletsSeen++;
+    }
+  }
+
+  if (lineToRemove === -1) {
+    console.log(chalk.red('Could not locate learning in file.'));
+    return;
+  }
+
+  const bulletToRemove = lines[lineToRemove];
+  const newLines = lines.filter((_, i) => i !== lineToRemove);
+  fs.writeFileSync(filePath, newLines.join('\n'));
+
+  if (item.source === 'personal') {
+    fs.chmodSync(filePath, 0o600);
+  }
+
+  // Clean up corresponding ROI stats entry
+  const roiStats = readROIStats();
+  const cleanText = bulletToRemove
+    .replace(/^- /, '')
+    .replace(/^\*\*\[[^\]]+\]\*\*\s*/, '')
+    .trim();
+  const roiIdx = roiStats.learnings.findIndex((l) => cleanText.includes(l.summary.slice(0, 30)));
+  if (roiIdx !== -1) {
+    roiStats.learnings.splice(roiIdx, 1);
+    writeROIStats(roiStats);
+  }
+
+  console.log(chalk.green('✓') + ` Removed: ${bulletToRemove.replace(/^- /, '').slice(0, 80)}`);
+}
+
+export async function learnAddCommand(content: string, options: { personal?: boolean }) {
+  if (!content.trim()) {
+    console.log(chalk.yellow('Please provide learning content.'));
+    throw new Error('__exit__');
+  }
+
+  const scope = options.personal ? 'personal' : 'project';
+  const result = addLearning(content.trim(), scope);
+
+  if (result.added) {
+    console.log(chalk.green('✓') + ` Learning saved to ${result.file}`);
+  } else {
+    console.log(chalk.dim('  Similar learning already exists — skipped.'));
+  }
+}

@@ -1,0 +1,54 @@
+import chalk from 'chalk';
+import { loadConfig, getConfigFilePath, getFastModel, getDisplayModel } from '../llm/config.js';
+import { runInteractiveProviderSetup } from './interactive-provider-setup.js';
+import { trackConfigProviderSet } from '../telemetry/events.js';
+
+export async function configCommand() {
+  const existing = loadConfig();
+
+  if (existing) {
+    const displayModel = getDisplayModel(existing);
+    const fastModel = getFastModel();
+
+    console.log(chalk.bold('\nCurrent Configuration\n'));
+    console.log(`  Provider: ${chalk.cyan(existing.provider)}`);
+    console.log(`  Model:    ${chalk.cyan(displayModel)}`);
+    if (fastModel) {
+      console.log(`  Scan:     ${chalk.cyan(fastModel)}`);
+    }
+    if (existing.apiKey) {
+      console.log(`  API Key:  ${chalk.dim('[configured]')}`);
+    }
+    if (existing.provider === 'cursor') {
+      console.log(`  Seat:     ${chalk.dim('Cursor (agent acp)')}`);
+    }
+    if (existing.provider === 'claude-cli') {
+      console.log(`  Seat:     ${chalk.dim('Claude Code (claude -p)')}`);
+    }
+    if (existing.baseUrl) {
+      console.log(`  Base URL: ${chalk.dim(existing.baseUrl)}`);
+    }
+    if (existing.vertexProjectId) {
+      console.log(`  Vertex Project: ${chalk.dim(existing.vertexProjectId)}`);
+      console.log(`  Vertex Region:  ${chalk.dim(existing.vertexRegion || 'us-east5')}`);
+    }
+    console.log(
+      `  Source:   ${chalk.dim(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.VERTEX_PROJECT_ID || process.env.AGENTIC_SETUP_USE_CURSOR_SEAT || process.env.AGENTIC_SETUP_USE_CLAUDE_CLI ? 'environment variables' : getConfigFilePath())}`,
+    );
+    console.log('');
+  }
+
+  await runInteractiveProviderSetup();
+
+  const updated = loadConfig();
+  if (updated) trackConfigProviderSet(updated.provider);
+
+  console.log(chalk.green('\n✓ Configuration saved'));
+  console.log(chalk.dim(`  ${getConfigFilePath()}\n`));
+  console.log(chalk.dim('  You can also set environment variables instead:'));
+  console.log(
+    chalk.dim(
+      '  ANTHROPIC_API_KEY, OPENAI_API_KEY, VERTEX_PROJECT_ID, AGENTIC_SETUP_USE_CURSOR_SEAT=1, or AGENTIC_SETUP_USE_CLAUDE_CLI=1\n',
+    ),
+  );
+}

@@ -1,0 +1,52 @@
+name: Bug Report
+description: Report a bug in agentic-setup
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug — what did you expect vs what actually happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this?
+      placeholder: |
+        1. Run `agentic-setup init`
+        2. Select Claude Code
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: agentic-setup version
+      description: Run `agentic-setup --version`
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: LLM Provider
+      options:
+        - Claude Code (seat)
+        - Cursor (seat)
+        - Anthropic API
+        - OpenAI API
+        - Vertex AI
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Run `node --version`
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15, Ubuntu 24.04, Windows 11, etc.
