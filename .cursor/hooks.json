@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "command": "agentic-setup learn observe"
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "agentic-setup learn observe --failure"
+      }
+    ],
+    "userPromptSubmit": [
+      {
+        "command": "agentic-setup learn observe --prompt"
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "agentic-setup learn finalize --auto"
+      }
+    ]
+  }
+}

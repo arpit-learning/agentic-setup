@@ -1,0 +1,39 @@
+name: agentic-setup Sync
+
+on:
+  schedule:
+    - cron: '0 3 * * 1-5'
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: agentic-setup check
+        run: npx agentic-setup@latest check --json
+        env:
+          AGENTIC_SETUP_SKIP_UPDATE_CHECK: '1'
+          AGENTIC_SETUP_TELEMETRY_DISABLED: '1'
+
+      - uses: arpit-pm1/agentic-setup@v1
+        with:
+          mode: sync
+          auto-refresh: true
+          comment: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AGENTIC_SETUP_SKIP_UPDATE_CHECK: '1'
+          AGENTIC_SETUP_TELEMETRY_DISABLED: '1'

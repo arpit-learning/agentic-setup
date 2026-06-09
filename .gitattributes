@@ -1,0 +1,5 @@
+# SKILL.md files must be LF for cross-platform hook/shell compatibility.
+**/SKILL.md text eol=lf
+
+# Bash hook scripts must be LF on POSIX shells (including Git Bash on Windows).
+.claude/hooks/*.sh text eol=lf

@@ -1,0 +1,118 @@
+name: agentic-setup Score
+
+on:
+  pull_request:
+    branches: [main, beta, staging]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: agentic-score-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  score:
+    name: score
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
+
+      - name: Score PR vs base
+        run: |
+          node dist/bin.js score --compare origin/${{ github.base_ref }} --json > score.json
+        env:
+          AGENTIC_SETUP_SKIP_UPDATE_CHECK: "1"
+          AGENTIC_SETUP_TELEMETRY_DISABLED: "1"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- agentic-score -->';
+            const payload = JSON.parse(fs.readFileSync('score.json', 'utf8'));
+            const current = payload.current;
+            const base = payload.base;
+            const delta = payload.delta;
+
+            const gradeEmoji = { A: '✅', B: '✅', C: '⚠️', D: '❌', F: '❌' };
+            const emoji = gradeEmoji[current.grade] || '❓';
+
+            const lines = [
+              marker,
+              `## ${emoji} agentic-setup Score: ${current.score}/100 (${current.grade})`,
+              '',
+            ];
+
+            if (base) {
+              const sign = delta > 0 ? '+' : '';
+              const icon = delta > 0 ? '⬆️' : delta < 0 ? '⬇️' : '➡️';
+              lines.push(`${icon} **${sign}${delta}** from \`${base.ref}\` (${base.score}/100)`);
+              lines.push('');
+            }
+
+            const failing = (current.checks || []).filter((c) => !c.passed);
+            if (failing.length > 0) {
+              lines.push('### Failing Checks');
+              lines.push('');
+              lines.push('| Check | Points | Suggestion |');
+              lines.push('|-------|--------|------------|');
+              for (const check of failing) {
+                const suggestion = (check.suggestion || check.detail || '').replace(/\|/g, '\\|');
+                lines.push(`| ${check.name || check.id} | ${check.earned}/${check.max} | ${suggestion} |`);
+              }
+              lines.push('');
+            }
+
+            const passing = (current.checks || []).filter((c) => c.passed);
+            if (passing.length > 0) {
+              lines.push(`<details><summary>✅ ${passing.length} passing checks</summary>`);
+              lines.push('');
+              for (const check of passing) {
+                lines.push(`- **${check.name || check.id}**: ${check.earned}/${check.max}`);
+              }
+              lines.push('</details>');
+              lines.push('');
+            }
+
+            lines.push('---');
+            lines.push('*Powered by [agentic-setup](https://github.com/arpit-pm1/agentic-setup)*');
+            const body = lines.join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

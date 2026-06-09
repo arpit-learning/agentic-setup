@@ -449,7 +449,7 @@ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
 ```bash
-git clone https://github.com/paytm/agentic-setup.git
+git clone git@github.com:arpit-pm1/agentic-setup.git
 cd agentic-setup
 npm install
 npm run dev      # Watch mode
