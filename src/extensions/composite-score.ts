@@ -1,4 +1,5 @@
 import type { ScoreResult } from '../scoring/index.js';
+import { computeGrade } from '../scoring/constants.js';
 import type { CodegraphStats } from './codegraph.js';
 import type { StaticScanResult } from './static-scans.js';
 
@@ -16,11 +17,7 @@ export interface CompositeScore {
 }
 
 function gradeFromPct(pct: number): string {
-  if (pct >= 90) return 'A';
-  if (pct >= 75) return 'B';
-  if (pct >= 60) return 'C';
-  if (pct >= 40) return 'D';
-  return 'F';
+  return computeGrade(Math.round(pct));
 }
 
 export function computeCompositeScore(
