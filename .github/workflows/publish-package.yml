@@ -51,7 +51,7 @@ jobs:
       # PAT from repo secret RELEASE_TOKEN; falls back to the workflow GITHUB_TOKEN.
       RELEASE_GIT_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           fetch-depth: 0
