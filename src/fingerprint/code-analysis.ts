@@ -120,7 +120,7 @@ const SKIP_PATTERNS = [
 const COMMENT_LINE: Record<string, RegExp> = {
   c: /^\s*\/\//,
   h: /^\s*#/,
-  x: /^\s*<!--.*-->\s*$/,
+  x: /^\s*<!--[\s\S]*?-->\s*$/,
 };
 
 const EXT_COMMENT: Record<string, string> = {

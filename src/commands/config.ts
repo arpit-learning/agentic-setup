@@ -17,8 +17,7 @@ export async function configCommand() {
       console.log(`  Scan:     ${chalk.cyan(fastModel)}`);
     }
     if (existing.apiKey) {
-      const masked = existing.apiKey.slice(0, 8) + '...' + existing.apiKey.slice(-4);
-      console.log(`  API Key:  ${chalk.dim(masked)}`);
+      console.log(`  API Key:  ${chalk.dim('[configured]')}`);
     }
     if (existing.provider === 'cursor') {
       console.log(`  Seat:     ${chalk.dim('Cursor (agent acp)')}`);
