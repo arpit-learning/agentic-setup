@@ -266,6 +266,21 @@ export function displayScoreDelta(before: ScoreResult, after: ScoreResult): void
   }
 }
 
+type CheckPointsLike = {
+  earnedPoints?: number;
+  maxPoints?: number;
+  earned?: number;
+  max?: number;
+};
+
+/** Points column for PR comments and other markdown tables. */
+export function formatCheckPoints(check: CheckPointsLike): string {
+  const earned = check.earnedPoints ?? check.earned ?? 0;
+  const max = check.maxPoints ?? check.max ?? 0;
+  if (max === 0) return '—';
+  return `${earned}/${max}`;
+}
+
 /**
  * Render a one-line score for git hook output.
  */

@@ -29,7 +29,12 @@ vi.mock('chalk', () => {
   return { default: chalk };
 });
 
-import { displayScoreDelta, displayScore, displayScoreSummary } from '../display.js';
+import {
+  displayScoreDelta,
+  displayScore,
+  displayScoreSummary,
+  formatCheckPoints,
+} from '../display.js';
 
 function makeCheck(
   overrides: Partial<Check> & { id: string; name: string; category: Check['category'] },
@@ -501,5 +506,19 @@ describe('displayScore', () => {
 
     const output = logs.join('\n');
     expect(output).not.toContain('TOP IMPROVEMENTS');
+  });
+});
+
+describe('formatCheckPoints', () => {
+  it('formats earned/max from earnedPoints/maxPoints', () => {
+    expect(formatCheckPoints({ earnedPoints: 3, maxPoints: 8 })).toBe('3/8');
+  });
+
+  it('supports earned/max aliases for legacy JSON', () => {
+    expect(formatCheckPoints({ earned: 0, max: 5 })).toBe('0/5');
+  });
+
+  it('shows em dash when maxPoints is zero (optional checks)', () => {
+    expect(formatCheckPoints({ earnedPoints: 0, maxPoints: 0 })).toBe('—');
   });
 });

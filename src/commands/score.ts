@@ -5,7 +5,7 @@ import { execFileSync } from 'child_process';
 import chalk from 'chalk';
 import { computeLocalScore } from '../scoring/index.js';
 import type { TargetAgent } from '../scoring/index.js';
-import { displayScore } from '../scoring/display.js';
+import { displayScore, formatCheckPoints } from '../scoring/display.js';
 import { readState } from '../lib/state.js';
 import { trackScoreComputed } from '../telemetry/events.js';
 import { displayProductName } from '../lib/resolve-cli.js';
@@ -16,6 +16,19 @@ interface ScoreOptions {
   quiet?: boolean;
   agent?: TargetAgent;
   compare?: string;
+}
+
+/** JSON consumers (GitHub Action, workflows) expect earned/max aliases on each check. */
+function serializeScoreForJson(result: ReturnType<typeof computeLocalScore>) {
+  return {
+    ...result,
+    checks: result.checks.map((c) => ({
+      ...c,
+      earned: c.earnedPoints,
+      max: c.maxPoints,
+      points: formatCheckPoints(c),
+    })),
+  };
 }
 
 const CONFIG_FILES = ['CLAUDE.md', 'AGENTS.md', '.cursorrules', 'AGENTIC_LEARNINGS.md'];
@@ -93,7 +106,7 @@ export async function scoreCommand(options: ScoreOptions) {
       console.log(
         JSON.stringify(
           {
-            current: result,
+            current: serializeScoreForJson(result),
             base: { score: baseResult.score, grade: baseResult.grade, ref: options.compare },
             delta,
           },
@@ -129,7 +142,7 @@ export async function scoreCommand(options: ScoreOptions) {
   }
 
   if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify(serializeScoreForJson(result), null, 2));
     return;
   }
 
