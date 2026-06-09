@@ -65,6 +65,14 @@ function gradeEmoji(grade) {
   return map[grade] || '\u2753';
 }
 
+function formatCheckPoints(check) {
+  if (check.points) return check.points;
+  const earned = check.earnedPoints ?? check.earned ?? 0;
+  const max = check.maxPoints ?? check.max ?? 0;
+  if (max === 0) return '\u2014';
+  return `${earned}/${max}`;
+}
+
 function buildComment(result, baseResult, agent) {
   const lines = [COMMENT_MARKER];
   lines.push(`## ${gradeEmoji(result.grade)} agentic-setup Score: ${result.score}/100 (${result.grade})`);
@@ -88,8 +96,8 @@ function buildComment(result, baseResult, agent) {
     lines.push('| Check | Points | Suggestion |');
     lines.push('|-------|--------|------------|');
     for (const check of failing) {
-      const suggestion = check.suggestion || check.detail || '';
-      lines.push(`| ${check.name || check.id} | ${check.earned}/${check.max} | ${suggestion} |`);
+      const suggestion = (check.suggestion || check.detail || '').replace(/\|/g, '\\|');
+      lines.push(`| ${check.name || check.id} | ${formatCheckPoints(check)} | ${suggestion} |`);
     }
     lines.push('');
   }
@@ -99,7 +107,7 @@ function buildComment(result, baseResult, agent) {
     lines.push(`<details><summary>\u2705 ${passing.length} passing checks</summary>`);
     lines.push('');
     for (const check of passing) {
-      lines.push(`- **${check.name || check.id}**: ${check.earned}/${check.max}`);
+      lines.push(`- **${check.name || check.id}**: ${formatCheckPoints(check)}`);
     }
     lines.push('</details>');
     lines.push('');

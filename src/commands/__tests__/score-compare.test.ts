@@ -9,6 +9,12 @@ vi.mock('../../scoring/index.js', () => ({
 }));
 vi.mock('../../scoring/display.js', () => ({
   displayScore: vi.fn(),
+  formatCheckPoints: (check: { earnedPoints?: number; maxPoints?: number }) => {
+    const earned = check.earnedPoints ?? 0;
+    const max = check.maxPoints ?? 0;
+    if (max === 0) return '—';
+    return `${earned}/${max}`;
+  },
 }));
 vi.mock('../../lib/state.js', () => ({
   readState: vi.fn(() => null),
@@ -116,7 +122,11 @@ describe('score --compare', () => {
 
   it('returns JSON with both scores', async () => {
     mockComputeLocalScore
-      .mockReturnValueOnce({ score: 87, grade: 'A', checks: [] })
+      .mockReturnValueOnce({
+        score: 87,
+        grade: 'A',
+        checks: [{ id: 'mcp', name: 'MCP servers', earnedPoints: 0, maxPoints: 5, passed: false }],
+      })
       .mockReturnValueOnce({ score: 92, grade: 'A', checks: [] });
 
     mockExecFileSync.mockReturnValue('# content');
@@ -128,6 +138,9 @@ describe('score --compare', () => {
     expect(parsed.current.score).toBe(87);
     expect(parsed.base.score).toBe(92);
     expect(parsed.delta).toBe(-5);
+    expect(parsed.current.checks[0].earned).toBe(0);
+    expect(parsed.current.checks[0].max).toBe(5);
+    expect(parsed.current.checks[0].points).toBe('0/5');
   });
 
   it('handles base with no config files (base scores from empty dir)', async () => {

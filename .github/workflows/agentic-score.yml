@@ -45,6 +45,15 @@ jobs:
           script: |
             const fs = require('fs');
             const marker = '<!-- agentic-score -->';
+
+            function formatCheckPoints(check) {
+              if (check.points) return check.points;
+              const earned = check.earnedPoints ?? check.earned ?? 0;
+              const max = check.maxPoints ?? check.max ?? 0;
+              if (max === 0) return '—';
+              return `${earned}/${max}`;
+            }
+
             const payload = JSON.parse(fs.readFileSync('score.json', 'utf8'));
             const current = payload.current;
             const base = payload.base;
@@ -74,7 +83,7 @@ jobs:
               lines.push('|-------|--------|------------|');
               for (const check of failing) {
                 const suggestion = (check.suggestion || check.detail || '').replace(/\|/g, '\\|');
-                lines.push(`| ${check.name || check.id} | ${check.earned}/${check.max} | ${suggestion} |`);
+                lines.push(`| ${check.name || check.id} | ${formatCheckPoints(check)} | ${suggestion} |`);
               }
               lines.push('');
             }
@@ -84,7 +93,7 @@ jobs:
               lines.push(`<details><summary>✅ ${passing.length} passing checks</summary>`);
               lines.push('');
               for (const check of passing) {
-                lines.push(`- **${check.name || check.id}**: ${check.earned}/${check.max}`);
+                lines.push(`- **${check.name || check.id}**: ${formatCheckPoints(check)}`);
               }
               lines.push('</details>');
               lines.push('');
