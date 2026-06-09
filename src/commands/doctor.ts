@@ -116,7 +116,7 @@ export function collectDoctorChecks(repoRoot: string): DoctorCheck[] {
   const stats = getCodegraphStats(repoRoot);
   add('Codegraph index exists', stats.indexed, true, 'Run: agentic-setup codegraph setup');
 
-  const cgCli = checkCodegraphCli();
+  const cgCli = checkCodegraphCli(repoRoot);
   add('codegraph-ai CLI available', cgCli.available, false);
 
   add(

@@ -74,17 +74,33 @@ export function getCodegraphStats(repoRoot: string): CodegraphStats {
   return { indexed: false };
 }
 
-export function checkCodegraphCli(): { available: boolean; version?: string } {
+function readCliVersion(command: string, args: string[]): string | null {
   try {
-    const version = execFileSync('npx', ['-y', 'codegraph-ai', '--version'], {
+    return execFileSync(command, args, {
       encoding: 'utf-8',
-      timeout: 60_000,
+      timeout: 3_000,
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
-    return { available: true, version };
   } catch {
-    return { available: false };
+    return null;
   }
+}
+
+/** Fast availability probe — never uses `npx -y` (downloads on cold CI/cache). */
+export function checkCodegraphCli(repoRoot = process.cwd()): {
+  available: boolean;
+  version?: string;
+} {
+  const localBin = path.join(repoRoot, 'node_modules', '.bin', 'codegraph-ai');
+  if (fs.existsSync(localBin)) {
+    const version = readCliVersion(localBin, ['--version']);
+    if (version) return { available: true, version };
+  }
+
+  const version = readCliVersion('npx', ['--no-install', 'codegraph-ai', '--version']);
+  if (version) return { available: true, version };
+
+  return { available: false };
 }
 
 export function mergeCodegraphMcp(repoRoot: string, dryRun = false): boolean {
