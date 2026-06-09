@@ -49,6 +49,26 @@ function hasMcpServers(dir: string): { count: number; sources: string[] } {
   return { count, sources };
 }
 
+function hasCopilotInstructions(dir: string): { found: boolean; source?: string } {
+  const copilotPath = join(dir, '.github', 'copilot-instructions.md');
+  if (existsSync(copilotPath)) {
+    return { found: true, source: '.github/copilot-instructions.md' };
+  }
+  try {
+    const instructionsDir = join(dir, '.github', 'instructions');
+    const files = readdirSync(instructionsDir).filter((f) => f.endsWith('.md'));
+    if (files.length > 0) {
+      return {
+        found: true,
+        source: `.github/instructions/ (${files.length} file${files.length === 1 ? '' : 's'})`,
+      };
+    }
+  } catch {
+    /* dir missing */
+  }
+  return { found: false };
+}
+
 export function checkExistence(dir: string): Check[] {
   const checks: Check[] = [];
 
@@ -155,26 +175,47 @@ export function checkExistence(dir: string): Check[] {
         },
   });
 
-  // 2c. copilot-instructions.md exists
-  const copilotInstructionsExists = existsSync(join(dir, '.github', 'copilot-instructions.md'));
+  // 2c. Copilot instructions exist
+  const copilot = hasCopilotInstructions(dir);
   checks.push({
     id: 'copilot_instructions_exists',
     name: 'Copilot instructions exist',
     category: 'existence',
     maxPoints: POINTS_CLAUDE_MD_EXISTS,
-    earnedPoints: copilotInstructionsExists ? POINTS_CLAUDE_MD_EXISTS : 0,
-    passed: copilotInstructionsExists,
-    detail: copilotInstructionsExists ? 'Found at .github/copilot-instructions.md' : 'Not found',
-    suggestion: copilotInstructionsExists
+    earnedPoints: copilot.found ? POINTS_CLAUDE_MD_EXISTS : 0,
+    passed: copilot.found,
+    detail: copilot.found ? `Found at ${copilot.source}` : 'Not found',
+    suggestion: copilot.found
       ? undefined
-      : 'Create .github/copilot-instructions.md with project context for GitHub Copilot',
-    fix: copilotInstructionsExists
+      : 'Create .github/copilot-instructions.md or .github/instructions/*.md for GitHub Copilot',
+    fix: copilot.found
       ? undefined
       : {
           action: 'create_file',
           data: { file: '.github/copilot-instructions.md' },
           instruction:
-            'Create .github/copilot-instructions.md with project context for GitHub Copilot.',
+            'Create .github/copilot-instructions.md or .github/instructions/ for GitHub Copilot.',
+        },
+  });
+
+  // 2d. OpenCode config exists
+  const opencodeDir = join(dir, '.opencode');
+  const opencodeExists = existsSync(opencodeDir);
+  checks.push({
+    id: 'opencode_config_exists',
+    name: 'OpenCode config exists',
+    category: 'existence',
+    maxPoints: POINTS_CLAUDE_MD_EXISTS,
+    earnedPoints: opencodeExists ? POINTS_CLAUDE_MD_EXISTS : 0,
+    passed: opencodeExists,
+    detail: opencodeExists ? 'Found .opencode/' : 'Not found',
+    suggestion: opencodeExists ? undefined : 'Create .opencode/ with OpenCode agent configuration',
+    fix: opencodeExists
+      ? undefined
+      : {
+          action: 'create_file',
+          data: { file: '.opencode/' },
+          instruction: 'Create .opencode/ directory with OpenCode configuration.',
         },
   });
 

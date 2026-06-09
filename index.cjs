@@ -60,64 +60,14 @@ function githubApi(method, path, body, token) {
 
 const COMMENT_MARKER = '<!-- agentic-score -->';
 
-function gradeEmoji(grade) {
-  const map = { A: '\u2705', B: '\u2705', C: '\u26A0\uFE0F', D: '\u274C', F: '\u274C' };
-  return map[grade] || '\u2753';
-}
-
-function formatCheckPoints(check) {
-  if (check.points) return check.points;
-  const earned = check.earnedPoints ?? check.earned ?? 0;
-  const max = check.maxPoints ?? check.max ?? 0;
-  if (max === 0) return '\u2014';
-  return `${earned}/${max}`;
-}
-
-function buildComment(result, baseResult, agent) {
-  const lines = [COMMENT_MARKER];
-  lines.push(`## ${gradeEmoji(result.grade)} agentic-setup Score: ${result.score}/100 (${result.grade})`);
-  lines.push('');
-
-  if (baseResult) {
-    const delta = result.score - baseResult.score;
-    const sign = delta > 0 ? '+' : '';
-    const icon = delta > 0 ? '\u2B06\uFE0F' : delta < 0 ? '\u2B07\uFE0F' : '\u27A1\uFE0F';
-    lines.push(`${icon} **${sign}${delta}** from base branch (${baseResult.score}/100)`);
-    lines.push('');
-  }
-
-  lines.push(`**Agent:** ${agent}`);
-  lines.push('');
-
-  const failing = (result.checks || []).filter((c) => !c.passed);
-  if (failing.length > 0) {
-    lines.push('### Failing Checks');
-    lines.push('');
-    lines.push('| Check | Points | Suggestion |');
-    lines.push('|-------|--------|------------|');
-    for (const check of failing) {
-      const suggestion = (check.suggestion || check.detail || '')
-        .replace(/\\/g, '\\\\')
-        .replace(/\|/g, '\\|');
-      lines.push(`| ${check.name || check.id} | ${formatCheckPoints(check)} | ${suggestion} |`);
-    }
-    lines.push('');
-  }
-
-  const passing = (result.checks || []).filter((c) => c.passed);
-  if (passing.length > 0) {
-    lines.push(`<details><summary>\u2705 ${passing.length} passing checks</summary>`);
-    lines.push('');
-    for (const check of passing) {
-      lines.push(`- **${check.name || check.id}**: ${formatCheckPoints(check)}`);
-    }
-    lines.push('</details>');
-    lines.push('');
-  }
-
-  lines.push('---');
-  lines.push('*Powered by [agentic-setup](https://github.com/arpit-pm1/agentic-setup)*');
-  return lines.join('\n');
+function buildCommentViaCli(agent, compareRef) {
+  const args = ['--yes', AGENTIC_PKG, 'score', '--comment', '--agent', agent];
+  if (compareRef) args.push('--compare', compareRef);
+  return execFileSync('npx', args, {
+    encoding: 'utf-8',
+    timeout: 120000,
+    env: { ...process.env, AGENTIC_SETUP_SKIP_UPDATE_CHECK: '1' },
+  }).trim();
 }
 
 // --- Agent format detection ---
@@ -331,7 +281,26 @@ async function run() {
 
   // Post PR comment
   if (shouldComment && prNumber && repo && token) {
-    const commentBody = buildComment(resultJson, baseResult, agent);
+    let commentBody;
+    try {
+      const baseBranch = (() => {
+        try {
+          const event = JSON.parse(require('fs').readFileSync(eventPath, 'utf-8'));
+          return event.pull_request?.base?.ref;
+        } catch {
+          return null;
+        }
+      })();
+      const compareRef = baseBranch && /^[\w.\-\/]+$/.test(baseBranch) ? `origin/${baseBranch}` : null;
+      commentBody = buildCommentViaCli(agent, compareRef);
+    } catch (err) {
+      console.log(`Warning: score --comment failed (${err.message}); skipping PR comment.`);
+      commentBody = null;
+    }
+
+    if (!commentBody) {
+      // skip posting
+    } else {
     const commentsPath = `/repos/${repo}/issues/${prNumber}/comments`;
 
     try {
@@ -348,6 +317,7 @@ async function run() {
       }
     } catch (err) {
       console.log(`Warning: Could not post PR comment: ${err.message}`);
+    }
     }
   }
 
