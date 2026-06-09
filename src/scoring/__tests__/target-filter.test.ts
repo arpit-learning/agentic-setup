@@ -252,4 +252,47 @@ describe('computeLocalScore target filtering', () => {
 
     expect(after.score).toBeGreaterThan(before.score);
   });
+
+  it('scores higher when .github/instructions/*.md exists for github-copilot target', () => {
+    const before = computeLocalScore(dir, ['github-copilot']);
+    mkdirSync(join(dir, '.github', 'instructions'), { recursive: true });
+    writeFileSync(join(dir, '.github', 'instructions', 'api.md'), '# API rules');
+    const after = computeLocalScore(dir, ['github-copilot']);
+
+    expect(after.score).toBeGreaterThan(before.score);
+  });
+
+  it('includes opencode checks when target is [opencode]', () => {
+    const result = computeLocalScore(dir, ['opencode']);
+    const checkIds = result.checks.map((c) => c.id);
+
+    expect(checkIds).toContain('opencode_config_exists');
+    expect(checkIds).toContain('codex_agents_md_exists');
+    expect(checkIds).not.toContain('claude_md_exists');
+  });
+
+  it('scores higher when .opencode/ exists for opencode target', () => {
+    const before = computeLocalScore(dir, ['opencode']);
+    mkdirSync(join(dir, '.opencode'), { recursive: true });
+    const after = computeLocalScore(dir, ['opencode']);
+
+    expect(after.score).toBeGreaterThan(before.score);
+  });
+
+  it('includes skills_configured check for all targets', () => {
+    const result = computeLocalScore(dir, ['claude']);
+    expect(result.checks.map((c) => c.id)).toContain('skills_configured');
+  });
+
+  it('scores higher when valid skill package exists', () => {
+    const before = computeLocalScore(dir, ['claude']);
+    mkdirSync(join(dir, '.claude', 'skills', 'my-skill'), { recursive: true });
+    writeFileSync(join(dir, '.claude', 'skills', 'my-skill', 'SKILL.md'), '# Skill');
+    const after = computeLocalScore(dir, ['claude']);
+
+    const beforeCheck = before.checks.find((c) => c.id === 'skills_configured');
+    const afterCheck = after.checks.find((c) => c.id === 'skills_configured');
+    expect(afterCheck?.passed).toBe(true);
+    expect(afterCheck!.earnedPoints).toBeGreaterThan(beforeCheck!.earnedPoints);
+  });
 });

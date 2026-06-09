@@ -4,9 +4,13 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 import chalk from 'chalk';
 import { computeLocalScore } from '../scoring/index.js';
-import type { TargetAgent } from '../scoring/index.js';
+import type { TargetAgent, ScoreResult } from '../scoring/index.js';
 import { displayScore, formatCheckPoints } from '../scoring/display.js';
+import { formatScoreCommentMarkdown } from '../scoring/markdown.js';
 import { readState } from '../lib/state.js';
+import { getCodegraphStats } from '../extensions/codegraph.js';
+import { runStaticScans } from '../extensions/static-scans.js';
+import { computeCompositeScore } from '../extensions/composite-score.js';
 import { trackScoreComputed } from '../telemetry/events.js';
 import { displayProductName } from '../lib/resolve-cli.js';
 import { recordScore } from '../scoring/history.js';
@@ -14,6 +18,7 @@ import { recordScore } from '../scoring/history.js';
 interface ScoreOptions {
   json?: boolean;
   quiet?: boolean;
+  comment?: boolean;
   agent?: TargetAgent;
   compare?: string;
 }
@@ -34,10 +39,7 @@ function serializeScoreForJson(result: ReturnType<typeof computeLocalScore>) {
 const CONFIG_FILES = ['CLAUDE.md', 'AGENTS.md', '.cursorrules', 'AGENTIC_LEARNINGS.md'];
 const CONFIG_DIRS = ['.claude', '.cursor'];
 
-function scoreBaseRef(
-  ref: string,
-  target: TargetAgent | undefined,
-): { score: number; grade: string } | null {
+function scoreBaseResult(ref: string, target: TargetAgent | undefined): ScoreResult | null {
   if (!/^[\w.\-/~^@{}]+$/.test(ref)) return null;
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentic-compare-'));
@@ -75,13 +77,18 @@ function scoreBaseRef(
         /* dir doesn't exist in base ref */
       }
     }
-    const result = computeLocalScore(tmpDir, target);
-    return { score: result.score, grade: result.grade };
+    return computeLocalScore(tmpDir, target);
   } catch {
     return null;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+}
+
+function buildCommentContext(dir: string, result: ScoreResult) {
+  const codegraph = getCodegraphStats(dir);
+  const scans = runStaticScans(dir, { skipLint: true, skipSecurity: true });
+  return computeCompositeScore(result, codegraph, scans);
 }
 
 export async function scoreCommand(options: ScoreOptions) {
@@ -92,7 +99,8 @@ export async function scoreCommand(options: ScoreOptions) {
   recordScore(result, 'score');
 
   if (options.compare) {
-    const baseResult = scoreBaseRef(options.compare, target);
+    const baseFull = scoreBaseResult(options.compare, target);
+    const baseResult = baseFull ? { score: baseFull.score, grade: baseFull.grade } : null;
     if (!baseResult) {
       console.error(
         chalk.red(`Could not score ref "${options.compare}" — branch or ref not found.`),
@@ -102,6 +110,18 @@ export async function scoreCommand(options: ScoreOptions) {
     }
 
     const delta = result.score - baseResult.score;
+    if (options.comment) {
+      const readiness = buildCommentContext(dir, result);
+      console.log(
+        formatScoreCommentMarkdown(result, {
+          base: { score: baseResult.score, grade: baseResult.grade, ref: options.compare },
+          baseResult: baseFull ?? undefined,
+          delta,
+          readiness,
+        }),
+      );
+      return;
+    }
     if (options.json) {
       console.log(
         JSON.stringify(
@@ -138,6 +158,12 @@ export async function scoreCommand(options: ScoreOptions) {
       console.log(chalk.gray(`  No change from ${options.compare} (${baseResult.score}/100)`));
     }
     console.log('');
+    return;
+  }
+
+  if (options.comment) {
+    const readiness = buildCommentContext(dir, result);
+    console.log(formatScoreCommentMarkdown(result, { readiness }));
     return;
   }
 

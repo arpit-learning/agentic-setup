@@ -62,6 +62,8 @@ export const POINTS_MODEL_PINNED = 2;
 export const POINTS_RUN_MD = 2;
 export const POINTS_AGENTS_MD = 1;
 export const POINTS_LEARNED_CONTENT = 2;
+/** At least one valid skill directory with SKILL.md */
+export const POINTS_SKILLS_CONFIGURED = 2;
 
 // ── Source checks (conditional — only counted when sources are configured) ──
 export const POINTS_SOURCES_CONFIGURED = 3;
@@ -143,6 +145,8 @@ export const CLAUDE_ONLY_CHECKS = new Set([
 export const BOTH_ONLY_CHECKS = new Set(['cross_platform_parity', 'no_duplicate_content']);
 
 export const CODEX_ONLY_CHECKS = new Set(['codex_agents_md_exists']);
+
+export const OPENCODE_ONLY_CHECKS = new Set(['opencode_config_exists']);
 
 export const COPILOT_ONLY_CHECKS = new Set(['copilot_instructions_exists']);
 

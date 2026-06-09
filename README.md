@@ -206,9 +206,13 @@ Init generates `run.md` (startup command, health URL, test command) so agents kn
 | **Grounding** | 20 | Config references actual project directories and files |
 | **Accuracy** | 15 | Referenced paths exist on disk, config freshness vs. git history |
 | **Freshness & Safety** | 10 | Recently updated, no leaked secrets, permissions configured |
-| **Bonus** | 9 | Auto-refresh hooks, AGENTS.md, `run.md` |
+| **Bonus** | 9+ | Hooks, learnings, model pinning, `run.md`, external sources |
 
-Every failing check includes structured fix data — when `agentic-setup init` runs, the LLM receives exactly what's wrong and how to fix it.
+**Grades:** A ≥ 85 · B ≥ 70 · C ≥ 55 · D ≥ 40 · F &lt; 40
+
+See the full rubric — every check, point value, and pass criteria — in **[docs/SCORING.md](docs/SCORING.md)**.
+
+Every failing check includes structured fix data — when `agentic-setup init` runs, the LLM receives exactly what's wrong and how to fix it. PR comments include a category breakdown, top improvements, and partial vs failing checks.
 
 </details>
 
@@ -312,6 +316,7 @@ Run `agentic-setup --help` for the full list. agentic-setup is **CLI-only** — 
 | `agentic-setup hooks --remove` | Disable hooks |
 | `agentic-setup score` | Config quality score (deterministic, no LLM) |
 | `agentic-setup score --compare <ref>` | Score delta vs. a git branch, tag, or SHA |
+| `agentic-setup score --comment` | PR comment markdown with category breakdown |
 | `agentic-setup status` | Setup status, CLI version pin, profile, drift |
 
 ### Extensions and CI

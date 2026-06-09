@@ -216,6 +216,7 @@ program
     parseAgentOption,
   )
   .option('--compare <ref>', 'Compare score against a git ref (branch, tag, or SHA)')
+  .option('--comment', 'Output PR comment markdown (use with --compare for delta)')
   .action(tracked('score', scoreCommand));
 
 program

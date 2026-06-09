@@ -8,11 +8,33 @@ import {
   POINTS_LEARNED_CONTENT,
   POINTS_MODEL_PINNED,
   POINTS_RUN_MD,
+  POINTS_SKILLS_CONFIGURED,
 } from '../constants.js';
 import { displayProductName } from '../../lib/resolve-cli.js';
 import { readFileOrNull } from '../utils.js';
 import { hasPreCommitBlock as checkPreCommitBlock } from '../../writers/pre-commit-block.js';
 import { configContentSuggestsPinnedModel } from '../model-pinning.js';
+
+function countSkillPackages(dir: string): number {
+  let count = 0;
+  for (const skillsDir of [
+    join(dir, '.claude', 'skills'),
+    join(dir, '.cursor', 'skills'),
+    join(dir, '.agents', 'skills'),
+    join(dir, '.opencode', 'skills'),
+  ]) {
+    try {
+      for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
+        if (entry.isDirectory() && existsSync(join(skillsDir, entry.name, 'SKILL.md'))) {
+          count++;
+        }
+      }
+    } catch {
+      /* dir missing */
+    }
+  }
+  return count;
+}
 
 function hasPreCommitHook(dir: string): boolean {
   try {
@@ -122,6 +144,25 @@ export function checkBonus(dir: string): Check[] {
     suggestion: hasLearned
       ? undefined
       : `Session learnings capture patterns from your coding sessions so the agent improves over time. Run \`${displayProductName()} learn install\``,
+  });
+
+  // 4. Skills configured
+  const skillCount = countSkillPackages(dir);
+  checks.push({
+    id: 'skills_configured',
+    name: 'Skills configured',
+    category: 'bonus',
+    maxPoints: POINTS_SKILLS_CONFIGURED,
+    earnedPoints: skillCount > 0 ? POINTS_SKILLS_CONFIGURED : 0,
+    passed: skillCount > 0,
+    detail:
+      skillCount > 0
+        ? `${skillCount} skill${skillCount === 1 ? '' : 's'} with SKILL.md`
+        : 'No skill directories found',
+    suggestion:
+      skillCount > 0
+        ? undefined
+        : `Add agent skills under .claude/skills/, .cursor/skills/, or .agents/skills/ with SKILL.md files`,
   });
 
   // 5. Model and effort level pinned
