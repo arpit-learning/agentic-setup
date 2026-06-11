@@ -19,7 +19,7 @@ npm run build    # Compile
 - **Watch**: `npm run dev`
 - **Test**: `npm run test` (Vitest)
 - **Type check**: `npx tsc --noEmit`
-- **Single test**: `npx vitest run src/scoring/__tests__/accuracy.test.ts`
+- **Single test**: `npx vitest run tests/scoring/accuracy.test.ts`
 
 ### Project structure
 
@@ -32,13 +32,14 @@ npm run build    # Compile
 | `src/scoring/` | Deterministic config quality scoring |
 | `src/writers/` | File writers for Claude/Cursor configs |
 | `src/scanner/` | Local state detection |
+| `tests/` | Vitest tests (mirrors `src/` layout) |
 
 ### Key conventions
 
 - ES module imports require `.js` extension (even for `.ts` source)
 - Prefer `unknown` over `any`
-- Tests live in `__tests__/` directories next to their source
-- Global LLM mocks are in `src/test/setup.ts`
+- Tests live in `tests/` (mirrors `src/` layout; e.g. `tests/scoring/accuracy.test.ts`)
+- Global LLM mocks are in `tests/setup.ts`
 
 ## Releases
 
@@ -53,24 +54,77 @@ Publishing is **manual** via GitHub Actions (**Actions → Publish Package → R
 | `build_type` | `prod`, `beta`, `stage` | `prod` = lint + typecheck + test + build; `beta` = test + build; `stage` = build + smoke only |
 | `branch` | default `main` | Branch to release from |
 
-### npm channels
+### Release channels (GitHub Packages)
 
-| release_type | npm tag | Version example | Install |
-|--------------|---------|-----------------|---------|
-| `release` | `latest` | `1.2.0` | `npm i agentic-setup` |
-| `alpha` | `alpha` | `1.2.1-alpha.0` | `npm i agentic-setup@alpha` |
-| `beta` | `beta` | `1.2.1-beta.0` | `npm i agentic-setup@beta` |
-| `rc` | `rc` | `1.2.1-rc.0` | `npm i agentic-setup@rc` |
+Each publish bumps semver (patch / minor / major), updates git tags, creates a GitHub Release, and publishes to **GitHub Packages** (`npm.pkg.github.com`).
+
+| release_type | npm dist-tag | Git tag example | Install |
+|--------------|--------------|-----------------|---------|
+| `release` | `latest` | `v1.2.0` | `npm i @arpit-pm1/agentic-setup` |
+| `alpha` | `alpha` | `v1.2.1-alpha.0` | `npm i @arpit-pm1/agentic-setup@alpha` |
+| `beta` | `beta` | `v1.2.1-beta.0` | `npm i @arpit-pm1/agentic-setup@beta` |
+| `rc` | `rc` | `v1.2.1-rc.0` | `npm i @arpit-pm1/agentic-setup@rc` |
+
+**Consumer auth** — copy [`.npmrc.example`](.npmrc.example) to `~/.npmrc` and set a GitHub PAT with `read:packages` (and repo access if the package is private):
+
+```ini
+@arpit-pm1:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
+```
+
+Stable releases also append to **`CHANGELOG.md`** via release-it (`@release-it/conventional-changelog`). Prereleases skip changelog generation.
 
 ### Required secrets
 
-- `NPM_TOKEN` — publish to [npmjs.com](https://www.npmjs.com/package/agentic-setup)
-- `RELEASE_TOKEN` — push version commits and tags back to the repo
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| `RELEASE_TOKEN` | Yes | GitHub PAT: git push, GitHub Releases, **and** GitHub Packages publish |
+
+**`RELEASE_TOKEN` setup** (Settings → Secrets and variables → Actions → New repository secret):
+
+1. Create a fine-grained PAT (or classic PAT) with **Contents: Read and write** and **Packages: Read and write** on this repo.
+2. If `main` / `staging` use branch protection, enable **Bypass branch protections** for the PAT user (or use a classic PAT with `repo` + `write:packages` scope).
+3. Add the token as repository secret **`RELEASE_TOKEN`**.
+
+The publish workflow uses `RELEASE_TOKEN` for release-it (commit/tag/push), `npm publish` to GitHub Packages, and `gh release`. No separate `NPM_TOKEN` is required.
+
+### CI release workflows
+
+| Workflow | What it does |
+|----------|--------------|
+| **Version Bump** | release-it only — semver bump, commit, git tag, push (no npm publish, no GitHub Release) |
+| **Publish Package** | validate + build + release-it + publish to GitHub Packages + GitHub Release (+ floating `vMAJOR` on stable) |
+
+Use **Version Bump** when you only need a tagged version on the branch. Use **Publish Package** for a full consumer-facing release.
+
+### Local release dry-run
+
+Version bump, changelog (stable releases), commit, tag, and push are handled by **[release-it](https://github.com/release-it/release-it)** via npm scripts:
+
+```bash
+# Stable release (updates CHANGELOG.md)
+release-it patch --dry-run
+release-it minor --dry-run
+
+# Prerelease (no CHANGELOG — --no-plugins)
+release-it patch prerelease --preRelease=alpha --dry-run --no-plugins
+
+# Workflow-equivalent script names
+npm run version-bump:patch:alpha
+npm run version-bump:minor:release
+npm run version:print
+npm run ci:check && npm run build
+```
+
+In CI, release-it commits and pushes (with CHANGELOG on stable releases). **Publish Package** also publishes to GitHub Packages and creates a GitHub Release. Only **`RELEASE_TOKEN`** is required.
 
 ### Testing a pre-release
 
+Configure `.npmrc` per [`.npmrc.example`](.npmrc.example), then:
+
 ```bash
-npx agentic-setup@alpha score
+npm i @arpit-pm1/agentic-setup@alpha
+npx agentic-setup score
 ```
 
 ## Branch model
@@ -124,6 +178,7 @@ After workflows are enabled on GitHub, configure **Settings → Branches** for `
 ## Reporting issues
 
 Open an issue with:
+
 - What you expected vs what happened
 - Steps to reproduce
 - Your environment (Node version, OS, provider used)

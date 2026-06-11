@@ -1,6 +1,6 @@
 {
-  "name": "agentic-setup",
-  "version": "1.0.0",
+  "name": "@arpit-pm1/agentic-setup",
+  "version": "0.0.0",
   "description": "Make any repository agentic-ready — AI context sync, Codegraph analysis, and readiness scoring",
   "type": "module",
   "bin": {
@@ -18,11 +18,24 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "ci:check": "npm run lint && npm run format:check && npx tsc --noEmit && npm test && npm run build",
-    "publish:release": "npm publish --access public --provenance --tag latest",
-    "publish:alpha": "npm publish --access public --tag alpha",
-    "publish:beta": "npm publish --access public --tag beta",
-    "publish:rc": "npm publish --access public --tag rc",
-    "prepare": "husky"
+    "publish:release": "npm publish --tag latest",
+    "publish:alpha": "npm publish --tag alpha",
+    "publish:beta": "npm publish --tag beta",
+    "publish:rc": "npm publish --tag rc",
+    "prepare": "husky",
+    "version-bump:patch:release": "release-it patch --ci --verbose",
+    "version-bump:minor:release": "release-it minor --ci --verbose",
+    "version-bump:major:release": "release-it major --ci --verbose",
+    "version-bump:patch:alpha": "release-it patch prerelease --preRelease=alpha --ci --verbose --no-plugins",
+    "version-bump:minor:alpha": "release-it minor prerelease --preRelease=alpha --ci --verbose --no-plugins",
+    "version-bump:major:alpha": "release-it major prerelease --preRelease=alpha --ci --verbose --no-plugins",
+    "version-bump:patch:beta": "release-it patch prerelease --preRelease=beta --ci --verbose --no-plugins",
+    "version-bump:minor:beta": "release-it minor prerelease --preRelease=beta --ci --verbose --no-plugins",
+    "version-bump:major:beta": "release-it major prerelease --preRelease=beta --ci --verbose --no-plugins",
+    "version-bump:patch:rc": "release-it patch prerelease --preRelease=rc --ci --verbose --no-plugins",
+    "version-bump:minor:rc": "release-it minor prerelease --preRelease=rc --ci --verbose --no-plugins",
+    "version-bump:major:rc": "release-it major prerelease --preRelease=rc --ci --verbose --no-plugins",
+    "version:print": "node -p \"require('./package.json').version\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
@@ -63,9 +76,12 @@
   "engines": {
     "node": ">=20"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/arpit-pm1/agentic-setup.git"
+    "url": "git+https://github.com/arpit-pm1/agentic-setup.git"
   },
   "bugs": {
     "url": "https://github.com/arpit-pm1/agentic-setup/issues"
@@ -88,6 +104,8 @@
     "lint-staged": "^17.0.7",
     "memfs": "^4.57.7",
     "prettier": "^3.8.4",
+    "@release-it/conventional-changelog": "^11.0.1",
+    "release-it": "^18.1.2",
     "tsup": "^8.3.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0",
