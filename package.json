@@ -6,7 +6,45 @@
   "bin": {
     "agentic-setup": "./dist/bin.js"
   },
-  "scripts": {
+  "license": "MIT",
+  "author": "Arpit Malik",
+  "files": [
+    "dist/**/*.js",
+    "templates/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "agentic",
+    "ai-agent",
+    "claude-code",
+    "cursor",
+    "codegraph",
+    "coding-agent",
+    "developer-tools",
+    "ai-config",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arpit-pm1/agentic-setup.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arpit-pm1/agentic-setup/issues"
+  },
+  "homepage": "https://github.com/arpit-pm1/agentic-setup#readme",
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },"scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "dev:install": "npm run build && npm link",
@@ -54,45 +92,6 @@
     "p-limit": "^5.0.0",
     "posthog-node": "^5.36.7"
   },
-  "files": [
-    "dist/**/*.js",
-    "templates/**",
-    "README.md",
-    "LICENSE"
-  ],
-  "license": "MIT",
-  "author": "Arpit Malik",
-  "keywords": [
-    "agentic",
-    "ai-agent",
-    "claude-code",
-    "cursor",
-    "codegraph",
-    "coding-agent",
-    "developer-tools",
-    "ai-config",
-    "cli"
-  ],
-  "engines": {
-    "node": ">=20"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/arpit-pm1/agentic-setup.git"
-  },
-  "bugs": {
-    "url": "https://github.com/arpit-pm1/agentic-setup/issues"
-  },
-  "homepage": "https://github.com/arpit-pm1/agentic-setup#readme",
-  "lint-staged": {
-    "src/**/*.ts": [
-      "eslint --fix",
-      "prettier --write"
-    ]
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/diff": "^7.0.2",
@@ -105,10 +104,13 @@
     "memfs": "^4.57.7",
     "prettier": "^3.8.4",
     "@release-it/conventional-changelog": "^11.0.1",
-    "release-it": "^18.1.2",
+    "release-it": "^20.2.0",
     "tsup": "^8.3.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "google-auth-library": "^10.7.0"
   }
 }
