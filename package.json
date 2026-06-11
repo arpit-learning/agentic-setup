@@ -35,7 +35,7 @@
     "commander": "^13.0.0",
     "diff": "^8.0.3",
     "glob": "^13.0.6",
-    "google-auth-library": "^9.0.0",
+    "google-auth-library": "^10.7.0",
     "openai": "^6.29.0",
     "ora": "^9.4.0",
     "p-limit": "^5.0.0",
