@@ -1,10 +1,49 @@
 {
-  "name": "agentic-setup",
-  "version": "1.0.0",
+  "name": "@arpit-pm1/agentic-setup",
+  "version": "0.0.0",
   "description": "Make any repository agentic-ready — AI context sync, Codegraph analysis, and readiness scoring",
   "type": "module",
   "bin": {
     "agentic-setup": "./dist/bin.js"
+  },
+  "license": "MIT",
+  "author": "Arpit Malik",
+  "files": [
+    "dist/**/*.js",
+    "templates/**",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "agentic",
+    "ai-agent",
+    "claude-code",
+    "cursor",
+    "codegraph",
+    "coding-agent",
+    "developer-tools",
+    "ai-config",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arpit-pm1/agentic-setup.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arpit-pm1/agentic-setup/issues"
+  },
+  "homepage": "https://github.com/arpit-pm1/agentic-setup#readme",
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "scripts": {
     "build": "tsup",
@@ -18,79 +57,75 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "ci:check": "npm run lint && npm run format:check && npx tsc --noEmit && npm test && npm run build",
-    "publish:release": "npm publish --access public --provenance --tag latest",
-    "publish:alpha": "npm publish --access public --tag alpha",
-    "publish:beta": "npm publish --access public --tag beta",
-    "publish:rc": "npm publish --access public --tag rc",
-    "prepare": "husky"
+    "publish:release": "npm publish --tag latest",
+    "publish:alpha": "npm publish --tag alpha",
+    "publish:beta": "npm publish --tag beta",
+    "publish:rc": "npm publish --tag rc",
+    "prepare": "husky",
+    "version-bump:patch:release": "release-it patch --ci --verbose",
+    "version-bump:minor:release": "release-it minor --ci --verbose",
+    "version-bump:major:release": "release-it major --ci --verbose",
+    "version-bump:patch:alpha": "release-it patch prerelease --preRelease=alpha --ci --verbose --no-plugins",
+    "version-bump:minor:alpha": "release-it minor prerelease --preRelease=alpha --ci --verbose --no-plugins",
+    "version-bump:major:alpha": "release-it major prerelease --preRelease=alpha --ci --verbose --no-plugins",
+    "version-bump:patch:beta": "release-it patch prerelease --preRelease=beta --ci --verbose --no-plugins",
+    "version-bump:minor:beta": "release-it minor prerelease --preRelease=beta --ci --verbose --no-plugins",
+    "version-bump:major:beta": "release-it major prerelease --preRelease=beta --ci --verbose --no-plugins",
+    "version-bump:patch:rc": "release-it patch prerelease --preRelease=rc --ci --verbose --no-plugins",
+    "version-bump:minor:rc": "release-it minor prerelease --preRelease=rc --ci --verbose --no-plugins",
+    "version-bump:major:rc": "release-it major prerelease --preRelease=rc --ci --verbose --no-plugins",
+    "version:print": "node -p \"require('./package.json').version\""
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
-    "@anthropic-ai/vertex-sdk": "^0.14.4",
-    "@inquirer/checkbox": "^5.1.0",
-    "@inquirer/confirm": "^6.0.8",
+    "@anthropic-ai/sdk": "^0.102.0",
+    "@anthropic-ai/vertex-sdk": "^0.17.1",
+    "@inquirer/checkbox": "^5.2.1",
+    "@inquirer/confirm": "^6.1.1",
     "@inquirer/input": "^5.0.11",
-    "@inquirer/select": "^5.1.0",
+    "@inquirer/select": "^5.2.1",
     "chalk": "^5.4.0",
-    "commander": "^13.0.0",
+    "commander": "^15.0.0",
     "diff": "^8.0.3",
     "glob": "^13.0.6",
-    "google-auth-library": "^9.0.0",
+    "google-auth-library": "^10.7.0",
     "openai": "^6.29.0",
-    "ora": "^8.1.0",
+    "ora": "^9.4.0",
     "p-limit": "^5.0.0",
-    "posthog-node": "^5.28.2"
-  },
-  "files": [
-    "dist/**/*.js",
-    "templates/**",
-    "README.md",
-    "LICENSE"
-  ],
-  "license": "MIT",
-  "author": "Arpit Malik",
-  "keywords": [
-    "agentic",
-    "ai-agent",
-    "claude-code",
-    "cursor",
-    "codegraph",
-    "coding-agent",
-    "developer-tools",
-    "ai-config",
-    "cli"
-  ],
-  "engines": {
-    "node": ">=20"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/arpit-pm1/agentic-setup.git"
-  },
-  "bugs": {
-    "url": "https://github.com/arpit-pm1/agentic-setup/issues"
-  },
-  "homepage": "https://github.com/arpit-pm1/agentic-setup#readme",
-  "lint-staged": {
-    "src/**/*.ts": [
-      "eslint --fix",
-      "prettier --write"
-    ]
+    "posthog-node": "^5.36.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/diff": "^7.0.2",
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.9.3",
     "@vitest/coverage-v8": "^4.0.18",
-    "eslint": "^10.1.0",
+    "eslint": "^10.4.1",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
-    "memfs": "^4.56.10",
-    "prettier": "^3.8.1",
+    "lint-staged": "^17.0.7",
+    "memfs": "^4.57.7",
+    "prettier": "^3.8.4",
+    "@release-it/conventional-changelog": "^11.0.1",
+    "release-it": "^20.2.0",
     "tsup": "^8.3.0",
-    "typescript": "^5.7.0",
-    "typescript-eslint": "^8.57.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "google-auth-library": "^10.7.0"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "1.0.3",
+    "@rolldown/binding-darwin-x64": "1.0.3",
+    "@rolldown/binding-linux-arm64-gnu": "1.0.3",
+    "@rolldown/binding-linux-x64-gnu": "1.0.3",
+    "@rolldown/binding-win32-arm64-msvc": "1.0.3",
+    "@rolldown/binding-win32-x64-msvc": "1.0.3",
+    "@rollup/rollup-darwin-arm64": "4.59.0",
+    "@rollup/rollup-darwin-x64": "4.59.0",
+    "@rollup/rollup-linux-arm64-gnu": "4.59.0",
+    "@rollup/rollup-linux-x64-gnu": "4.59.0",
+    "@rollup/rollup-win32-arm64-msvc": "4.59.0",
+    "@rollup/rollup-win32-x64-msvc": "4.59.0"
   }
 }
