@@ -12,4 +12,4 @@ paths:
 - Helpers: `readFileOrNull()`, `collectPrimaryConfigContent()`, `estimateTokens()` in `src/scoring/utils.ts`
 - Display: `src/scoring/display.ts` · History: `src/scoring/history.ts` · Dismissed: `src/scoring/dismissed.ts`
 - Grade thresholds in `GRADE_THRESHOLDS`, category max in `CATEGORY_MAX`
-- Test: `npx vitest run src/scoring/__tests__/accuracy.test.ts`
+- Test: `npx vitest run tests/scoring/accuracy.test.ts`

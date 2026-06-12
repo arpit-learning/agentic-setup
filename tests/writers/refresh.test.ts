@@ -1,0 +1,216 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import fs from 'fs';
+
+vi.mock('fs');
+
+import { writeRefreshDocs } from '../../src/writers/refresh.js';
+
+describe('writeRefreshDocs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+  });
+
+  it('writes CLAUDE.md directly', () => {
+    const written = writeRefreshDocs({
+      claudeMd: '# Project\n\nUpdated content.\n',
+    });
+
+    expect(written).toContain('CLAUDE.md');
+    const content = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    expect(content).toContain('# Project\n\nUpdated content.');
+    expect(content).toContain('agentic:managed:pre-commit');
+    expect(content).toContain('agentic:managed:model-config');
+  });
+
+  it('writes other doc types normally', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+
+    const written = writeRefreshDocs({
+      readmeMd: '# README',
+      cursorRules: [{ filename: 'test.mdc', content: 'rule content' }],
+    });
+
+    expect(written).toContain('README.md');
+    const rulePath = written.find((p) => p.includes('test.mdc'));
+    expect(rulePath).toBeDefined();
+  });
+
+  it('returns empty array when no docs need updating', () => {
+    const written = writeRefreshDocs({});
+    expect(written).toEqual([]);
+  });
+
+  it('writes copilot instructions when provided', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    const written = writeRefreshDocs({
+      copilotInstructions: '# Updated Copilot Instructions',
+    });
+
+    expect(written).toContain('.github/copilot-instructions.md');
+    expect(vi.mocked(fs.mkdirSync)).toHaveBeenCalledWith('.github', { recursive: true });
+    const copilotContent = vi
+      .mocked(fs.writeFileSync)
+      .mock.calls.find((c) => String(c[0]).endsWith('copilot-instructions.md'))?.[1] as string;
+    expect(copilotContent).toContain('agentic:managed:model-config');
+  });
+
+  it('writes copilot instruction files when provided', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    const written = writeRefreshDocs({
+      copilotInstructionFiles: [
+        { filename: 'ts.instructions.md', content: '---\napplyTo: "**/*.ts"\n---\n\nUse strict.' },
+      ],
+    });
+
+    const instrPath = written.find((p) => p.includes('ts.instructions.md'));
+    expect(instrPath).toBeDefined();
+    expect(vi.mocked(fs.mkdirSync)).toHaveBeenCalledWith(expect.stringContaining('instructions'), {
+      recursive: true,
+    });
+  });
+
+  it('skips copilot when null', () => {
+    const written = writeRefreshDocs({
+      copilotInstructions: null,
+      copilotInstructionFiles: null,
+    });
+    expect(written).toEqual([]);
+  });
+
+  it('writes AGENTS.md with all managed blocks (codex platform)', () => {
+    const written = writeRefreshDocs({
+      agentsMd: '# Agents\n\nProject instructions.\n',
+    });
+    expect(written).toContain('AGENTS.md');
+    const content = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    expect(content).toContain('agentic:managed:pre-commit');
+    expect(content).toContain('agentic:managed:learnings');
+    expect(content).toContain('agentic:managed:sync');
+    expect(content).toContain('npx agentic-setup setup');
+  });
+
+  it('writes CLAUDE.md with all managed blocks', () => {
+    const written = writeRefreshDocs({
+      claudeMd: '# Project\n\nContent.\n',
+    });
+    expect(written).toContain('CLAUDE.md');
+    const content = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+    expect(content).toContain('agentic:managed:pre-commit');
+    expect(content).toContain('agentic:managed:learnings');
+    expect(content).toContain('agentic:managed:sync');
+    expect(content).toContain('npx agentic-setup setup');
+  });
+
+  it('writes copilot instructions with all managed blocks (copilot platform)', () => {
+    const written = writeRefreshDocs({
+      copilotInstructions: '# Copilot\n\nInstructions.\n',
+    });
+    expect(written).toContain('.github/copilot-instructions.md');
+    const call = vi
+      .mocked(fs.writeFileSync)
+      .mock.calls.find((c) => String(c[0]).includes('copilot-instructions'));
+    const content = call![1] as string;
+    expect(content).toContain('agentic:managed:pre-commit');
+    expect(content).toContain('agentic:managed:learnings');
+    expect(content).toContain('agentic:managed:sync');
+    expect(content).toContain('npx agentic-setup setup');
+  });
+
+  it('writes claude rules to .claude/rules/', () => {
+    const written = writeRefreshDocs({
+      claudeRules: [
+        { filename: 'testing.md', content: '---\npaths:\n  - "**/*.test.ts"\n---\n\n# Testing\n' },
+      ],
+    });
+
+    const rulePath = written.find((p) => p.includes('testing.md'));
+    expect(rulePath).toBeDefined();
+    expect(vi.mocked(fs.mkdirSync)).toHaveBeenCalledWith(expect.stringContaining('.claude/rules'), {
+      recursive: true,
+    });
+  });
+
+  describe('inferActiveTargets via managed block paths', () => {
+    it('includes cursor paths when cursorRules are present', () => {
+      writeRefreshDocs({
+        claudeMd: '# Test',
+        cursorRules: [{ filename: 'r.mdc', content: 'rule' }],
+      });
+      const claudeContent = vi
+        .mocked(fs.writeFileSync)
+        .mock.calls.find((c) => String(c[0]) === 'CLAUDE.md')?.[1] as string;
+      expect(claudeContent).toContain('.cursor/');
+      expect(claudeContent).not.toContain('AGENTS.md');
+    });
+
+    it('omits cursor paths when no cursor docs provided', () => {
+      writeRefreshDocs({ claudeMd: '# Test' });
+      const claudeContent = vi
+        .mocked(fs.writeFileSync)
+        .mock.calls.find((c) => String(c[0]) === 'CLAUDE.md')?.[1] as string;
+      expect(claudeContent).not.toContain('.cursor/');
+    });
+
+    it('includes copilot paths when copilot docs provided', () => {
+      writeRefreshDocs({
+        claudeMd: '# Test',
+        copilotInstructions: '# Copilot',
+      });
+      const claudeContent = vi
+        .mocked(fs.writeFileSync)
+        .mock.calls.find((c) => String(c[0]) === 'CLAUDE.md')?.[1] as string;
+      expect(claudeContent).toContain('.github/copilot-instructions.md');
+    });
+
+    it('omits claude paths from AGENTS.md when only codex docs provided', () => {
+      writeRefreshDocs({ agentsMd: '# Agents' });
+      const agentsContent = vi
+        .mocked(fs.writeFileSync)
+        .mock.calls.find((c) => String(c[0]) === 'AGENTS.md')?.[1] as string;
+      expect(agentsContent).toContain('AGENTS.md');
+      expect(agentsContent).not.toContain('CLAUDE.md');
+    });
+  });
+
+  describe('dir parameter', () => {
+    it('prefixes CLAUDE.md path with dir', () => {
+      const written = writeRefreshDocs({ claudeMd: '# Pkg' }, 'packages/frontend');
+      expect(written).toContain('packages/frontend/CLAUDE.md');
+    });
+
+    it('prefixes AGENTS.md path with dir', () => {
+      const written = writeRefreshDocs({ agentsMd: '# Agents' }, 'packages/backend');
+      expect(written).toContain('packages/backend/AGENTS.md');
+    });
+
+    it('prefixes cursor rules paths with dir', () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      const written = writeRefreshDocs(
+        { cursorRules: [{ filename: 'test.mdc', content: 'rule' }] },
+        'packages/api',
+      );
+      expect(written).toContain('packages/api/.cursor/rules/test.mdc');
+    });
+
+    it('prefixes copilot instructions path with dir', () => {
+      const written = writeRefreshDocs({ copilotInstructions: '# Copilot' }, 'packages/frontend');
+      expect(written).toContain('packages/frontend/.github/copilot-instructions.md');
+    });
+
+    it('uses root paths when dir is "."', () => {
+      const written = writeRefreshDocs({ claudeMd: '# Root' }, '.');
+      expect(written).toContain('CLAUDE.md');
+    });
+
+    it('creates parent directories for subdirectory writes', () => {
+      writeRefreshDocs({ claudeMd: '# Pkg' }, 'packages/frontend');
+      const mkdirCalls = vi
+        .mocked(fs.mkdirSync)
+        .mock.calls.map((call) => (call[0] as string).replace(/\\/g, '/'));
+      expect(mkdirCalls).toContain('packages/frontend');
+    });
+  });
+});

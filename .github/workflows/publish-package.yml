@@ -2,7 +2,7 @@ name: Publish Package
 
 permissions:
   contents: write
-  id-token: write
+  packages: write
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ on:
           - beta
           - rc
       version_bump:
-        description: 'Semver bump (only when release_type = release)'
+        description: 'Semver bump (patch, minor, major)'
         required: true
         default: 'patch'
         type: choice
@@ -42,22 +42,27 @@ on:
         type: string
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '20.19'
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      # PAT from repo secret RELEASE_TOKEN; falls back to the workflow GITHUB_TOKEN.
+      RELEASE_GIT_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN }}
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          registry-url: https://registry.npmjs.org
+          registry-url: https://npm.pkg.github.com
+          scope: '@arpit-pm1'
           cache: npm
 
       - run: npm ci
@@ -73,7 +78,12 @@ jobs:
         if: inputs.build_type == 'beta'
         run: npm test
 
+      - name: Validate (stage)
+        if: inputs.build_type == 'stage'
+        run: npm run build
+
       - name: Build
+        if: inputs.build_type != 'stage'
         run: npm run build
 
       - name: Smoke test
@@ -83,151 +93,64 @@ jobs:
         env:
           AGENTIC_SETUP_SKIP_UPDATE_CHECK: '1'
 
-      - name: Configure Git
+      - name: Configure git credentials
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+          git remote set-url origin "https://x-access-token:${RELEASE_GIT_TOKEN}@github.com/${{ github.repository }}.git"
 
-      - name: Bump version
+      - name: Bump version (release-it)
         id: version
+        env:
+          GIT_AUTHOR_NAME: github-actions
+          GIT_AUTHOR_EMAIL: github-actions@github.com
+          GIT_COMMITTER_NAME: github-actions
+          GIT_COMMITTER_EMAIL: github-actions@github.com
+          GITHUB_TOKEN: ${{ env.RELEASE_GIT_TOKEN }}
         run: |
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          RELEASE_TYPE="${{ inputs.release_type }}"
+          npm run version-bump:${{ inputs.version_bump }}:${{ inputs.release_type }}
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
 
-          if [ "$RELEASE_TYPE" = "release" ]; then
-            npm version "${{ inputs.version_bump }}" --no-git-tag-version
-            echo "tag=latest" >> "$GITHUB_OUTPUT"
-          else
-            npm version prerelease --preid="$RELEASE_TYPE" --no-git-tag-version
-            echo "tag=$RELEASE_TYPE" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Rebuild at release version
+        run: npm run build
 
-          NEW_VERSION=$(node -p "require('./package.json').version")
-
-          while npm view "${PACKAGE_NAME}@${NEW_VERSION}" version 2>/dev/null; do
-            echo "v${NEW_VERSION} already on npm, bumping..."
-            if [ "$RELEASE_TYPE" = "release" ]; then
-              npm version patch --no-git-tag-version
-            else
-              npm version prerelease --preid="$RELEASE_TYPE" --no-git-tag-version
-            fi
-            NEW_VERSION=$(node -p "require('./package.json').version")
-          done
-
-          echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Publishing v${NEW_VERSION} (npm tag: $( [ "$RELEASE_TYPE" = "release" ] && echo latest || echo "$RELEASE_TYPE" ))"
-
-      - name: Generate changelog
-        if: inputs.release_type == 'release'
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" 2>/dev/null || echo "")
-          DATE=$(date +%Y-%m-%d)
-
-          if [ -n "$LAST_TAG" ]; then
-            RANGE="${LAST_TAG}..HEAD"
-          else
-            RANGE="HEAD"
-          fi
-
-          FEATURES=""
-          FIXES=""
-          REFACTORS=""
-          OTHER=""
-
-          while IFS= read -r line; do
-            echo "$line" | grep -qE "^(Merge |chore: release)" && continue
-
-            SUBJECT="$line"
-            if echo "$SUBJECT" | grep -qE "^feat(\(.+\))?!?:"; then
-              DESC=$(echo "$SUBJECT" | sed -E 's/^feat(\([^)]+\))?!?:[[:space:]]*//')
-              SCOPE=$(echo "$SUBJECT" | sed -nE 's/^feat\(([^)]+)\)!?:.*/\1/p')
-              if [ -n "$SCOPE" ]; then
-                FEATURES="${FEATURES}\n- **${SCOPE}**: ${DESC}"
-              else
-                FEATURES="${FEATURES}\n- ${DESC}"
-              fi
-            elif echo "$SUBJECT" | grep -qE "^fix(\(.+\))?!?:"; then
-              DESC=$(echo "$SUBJECT" | sed -E 's/^fix(\([^)]+\))?!?:[[:space:]]*//')
-              SCOPE=$(echo "$SUBJECT" | sed -nE 's/^fix\(([^)]+)\)!?:.*/\1/p')
-              if [ -n "$SCOPE" ]; then
-                FIXES="${FIXES}\n- **${SCOPE}**: ${DESC}"
-              else
-                FIXES="${FIXES}\n- ${DESC}"
-              fi
-            elif echo "$SUBJECT" | grep -qE "^refactor(\(.+\))?!?:"; then
-              DESC=$(echo "$SUBJECT" | sed -E 's/^refactor(\([^)]+\))?!?:[[:space:]]*//')
-              SCOPE=$(echo "$SUBJECT" | sed -nE 's/^refactor\(([^)]+)\)!?:.*/\1/p')
-              if [ -n "$SCOPE" ]; then
-                REFACTORS="${REFACTORS}\n- **${SCOPE}**: ${DESC}"
-              else
-                REFACTORS="${REFACTORS}\n- ${DESC}"
-              fi
-            else
-              echo "$SUBJECT" | grep -qE "^(chore|docs|test|ci|build|style)(\(.+\))?:" && continue
-              OTHER="${OTHER}\n- ${SUBJECT}"
-            fi
-          done < <(git log "$RANGE" --format="%s" --no-merges)
-
-          ENTRY="## v${VERSION} (${DATE})"
-
-          if [ -n "$FEATURES" ]; then
-            ENTRY="${ENTRY}\n\n### Features\n${FEATURES}"
-          fi
-          if [ -n "$FIXES" ]; then
-            ENTRY="${ENTRY}\n\n### Bug Fixes\n${FIXES}"
-          fi
-          if [ -n "$REFACTORS" ]; then
-            ENTRY="${ENTRY}\n\n### Refactoring\n${REFACTORS}"
-          fi
-          if [ -n "$OTHER" ]; then
-            ENTRY="${ENTRY}\n\n### Other\n${OTHER}"
-          fi
-
-          if [ -f CHANGELOG.md ]; then
-            EXISTING=$(cat CHANGELOG.md)
-            printf '%b\n\n%s\n' "$ENTRY" "$EXISTING" > CHANGELOG.md
-          else
-            printf '# Changelog\n\n%b\n' "$ENTRY" > CHANGELOG.md
-          fi
-
-      - name: Publish to npm
+      - name: Publish to GitHub Packages
         run: npm run publish:${{ inputs.release_type }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.RELEASE_GIT_TOKEN }}
 
-      - name: Commit version bump
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          RELEASE_TYPE="${{ inputs.release_type }}"
-          git add package.json package-lock.json
-          if [ "$RELEASE_TYPE" = "release" ]; then
-            git add CHANGELOG.md
-            git commit -m "chore: release v${VERSION} [skip ci]" || echo "No version changes to commit"
-          else
-            git commit -m "chore: prerelease v${VERSION} [skip ci]" || echo "No version changes to commit"
-          fi
-          git push
-
-      - name: Tag and push release
+      - name: Push floating major tag
         if: inputs.release_type == 'release'
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-          git tag "v${VERSION}"
-          MAJOR=$(echo "${VERSION}" | cut -d. -f1)
+          git remote set-url origin "https://x-access-token:${RELEASE_GIT_TOKEN}@github.com/${{ github.repository }}.git"
+          MAJOR=$(echo "${{ steps.version.outputs.version }}" | cut -d. -f1)
           git tag -f "v${MAJOR}"
-          git push origin "v${VERSION}"
           git push -f origin "v${MAJOR}"
 
       - name: Create GitHub release
-        if: inputs.release_type == 'release'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ env.RELEASE_GIT_TOKEN }}
         run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
-            --title "v${{ steps.version.outputs.version }}" \
-            --generate-notes \
-            --latest
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v${VERSION}"
+          if [ "${{ inputs.release_type }}" = "release" ]; then
+            if [ -f CHANGELOG.md ]; then
+              gh release create "${TAG}" \
+                --title "${TAG}" \
+                --notes-file CHANGELOG.md \
+                --latest
+            else
+              gh release create "${TAG}" \
+                --title "${TAG}" \
+                --generate-notes \
+                --latest
+            fi
+          else
+            gh release create "${TAG}" \
+              --title "${TAG} (${{ inputs.release_type }})" \
+              --generate-notes \
+              --prerelease
+          fi
 
       - name: Output package details
         run: cat package.json

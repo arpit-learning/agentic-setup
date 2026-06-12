@@ -30,11 +30,11 @@ npx tsc --noEmit     # type check
 
 **Lib** (`src/lib/`): `hooks.ts` · `state.ts` · `resolve-cli.ts` · `builtin-skills.ts` · `sanitize.ts` · `git-diff.ts`
 
-**Other**: `src/constants.ts` · `src/test/setup.ts` · `github-action/` · `packages/mcp-server/` · `packages/shared/` · `apps/`
+**Other**: `src/constants.ts` · `tests/setup.ts` · `github-action/` · `packages/mcp-server/` · `packages/shared/` · `apps/`
 
 ## Conventions
 
-- ESM with `.js` extensions · Tests in `__tests__/` dirs · `unknown` over `any`
+- ESM with `.js` extensions · Tests in `tests/` (mirrors `src/`) · `unknown` over `any`
 - Conventional commits (`feat:`, `fix:`, `refactor:`) · Dev: `next`, Stable: `master`
 - Providers implement `LLMProvider` from `src/llm/types.ts`
 - Writers in `src/writers/claude/index.ts` · `src/writers/codex/index.ts` return `string[]`

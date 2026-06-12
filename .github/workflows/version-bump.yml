@@ -1,0 +1,70 @@
+name: Version Bump
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump_type:
+        description: 'Version bump type (patch, minor, major)'
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      release_type:
+        description: 'Release type (release, alpha, beta, rc)'
+        required: true
+        default: alpha
+        type: choice
+        options:
+          - release
+          - alpha
+          - beta
+          - rc
+      branch:
+        description: 'Branch to release from'
+        required: true
+        default: main
+        type: string
+
+env:
+  NODE_VERSION: '20.19'
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_GIT_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Configure git credentials
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git remote set-url origin "https://x-access-token:${RELEASE_GIT_TOKEN}@github.com/${{ github.repository }}.git"
+
+      - name: Bump version (release-it)
+        env:
+          GIT_AUTHOR_NAME: github-actions
+          GIT_AUTHOR_EMAIL: github-actions@github.com
+          GIT_COMMITTER_NAME: github-actions
+          GIT_COMMITTER_EMAIL: github-actions@github.com
+          GITHUB_TOKEN: ${{ env.RELEASE_GIT_TOKEN }}
+        run: npm run version-bump:${{ inputs.version_bump_type }}:${{ inputs.release_type }}

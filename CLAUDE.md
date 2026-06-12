@@ -12,7 +12,7 @@ npm run dev          # watch mode
 npm run test         # vitest run
 npm run lint         # eslint src/
 npx tsc --noEmit     # type check
-npx vitest run src/scoring/__tests__/accuracy.test.ts  # single test
+npx vitest run tests/scoring/accuracy.test.ts  # single test
 ```
 
 ## Architecture
@@ -39,13 +39,13 @@ npx vitest run src/scoring/__tests__/accuracy.test.ts  # single test
 
 **Telemetry** (`src/telemetry/`): `index.ts` · `config.ts` · `events.ts` · **Learner** (`src/learner/`): `writer.ts` · `storage.ts` · `attribution.ts` · `roi.ts` · `utils.ts` · `stdin.ts`
 
-**Other**: `action.yml` · `index.cjs` (GitHub Action) · `templates/` · `src/constants.ts` · `src/test/setup.ts` · `CHANGELOG.md`
+**Other**: `action.yml` · `index.cjs` (GitHub Action) · `templates/` · `src/constants.ts` · `tests/setup.ts` · `CHANGELOG.md`
 
 @./CONTRIBUTING.md
 
 ## Conventions
 
-- ESM with `.js` import extensions · Tests in `__tests__/` dirs · Setup: `src/test/setup.ts`
+- ESM with `.js` import extensions · Tests in `tests/` (mirrors `src/`) · Setup: `tests/setup.ts`
 - `unknown` over `any` · Conventional commits (`feat:`, `fix:`, `refactor:`)
 - Dev: `next` branch · Stable: `master` · Node >= 20
 - Config: `~/.agentic-setup/config.json` (mode `0600`) · Constants: `src/constants.ts`

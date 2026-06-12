@@ -7,9 +7,9 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/agentic-setup"><img src="https://img.shields.io/npm/v/agentic-setup" alt="npm version"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/agentic-setup" alt="license"></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/agentic-setup" alt="node"></a>
+  <a href="https://github.com/arpit-pm1/agentic-setup/releases"><img src="https://img.shields.io/github/v/release/arpit-pm1/agentic-setup" alt="release version"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/@arpit-pm1/agentic-setup" alt="license"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@arpit-pm1/agentic-setup" alt="node"></a>
   <img src="https://img.shields.io/badge/config-94%2F100-brightgreen" alt="agentic-setup Score">
   <img src="https://img.shields.io/badge/Claude_Code-supported-blue" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cursor-supported-blue" alt="Cursor">
@@ -45,11 +45,21 @@ agentic-setup score --compare main    # See how your branch changed the score
 
 ## Get Started
 
-Requires **Node.js >= 20**.
+Requires **Node.js >= 20**. Published to [GitHub Packages](https://github.com/arpit-pm1/agentic-setup/pkgs/npm/agentic-setup) as `@arpit-pm1/agentic-setup`.
+
+Configure registry auth once (see [`.npmrc.example`](.npmrc.example)):
+
+```ini
+@arpit-pm1:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
+```
 
 ```bash
-npx agentic-setup setup --auto-approve --agent claude,cursor
+npm i -g @arpit-pm1/agentic-setup          # optional global install
+npx @arpit-pm1/agentic-setup setup --auto-approve --agent claude,cursor
 ```
+
+The CLI command remains **`agentic-setup`** after install (global or local).
 
 This runs the full onboarding pipeline: hooks, config generation, Codegraph, analyze, and readiness checks. Works with any LLM provider — bring your own Anthropic, OpenAI, or Vertex AI key, or use Claude Code / Cursor subscription when available.
 
@@ -71,7 +81,7 @@ agentic-setup check --json   # for GitHub Actions
 
 agentic-setup works on Windows with a few notes:
 
-- **Run from your terminal** (PowerShell, CMD, or Git Bash) — not from inside an IDE chat window. Open a terminal, `cd` into your project folder, then run `npx agentic-setup setup`.
+- **Run from your terminal** (PowerShell, CMD, or Git Bash) — not from inside an IDE chat window. Open a terminal, `cd` into your project folder, then run `npx @arpit-pm1/agentic-setup setup`.
 - **Git Bash is recommended.** agentic-setup's pre-commit hooks and auto-sync scripts use shell syntax. Git for Windows includes Git Bash, which handles this automatically. If you only use PowerShell, hooks may be skipped silently.
 - **Cursor Agent CLI:** If prompted to install it, download from [cursor.com/downloads](https://www.cursor.com/downloads) instead of the `curl | bash` command shown on macOS/Linux. Then run `agent login` in your terminal to authenticate.
 - **One terminal at a time.** Avoid running agentic-setup from multiple terminals simultaneously — this can cause conflicting state and unexpected provider detection.
@@ -95,7 +105,7 @@ If your existing config scores **95+**, agentic-setup skips full regeneration an
 Run `agentic-setup setup` once in your terminal. It analyzes your project — languages, frameworks, dependencies, architecture — generates configs, and installs hooks. From there, it's a loop:
 
 ```
-  npx agentic-setup setup           ← one-time onboarding
+  npx @arpit-pm1/agentic-setup setup    ← one-time onboarding
               │
               ▼
   ┌──── configs generated ◄────────────┐
@@ -110,7 +120,7 @@ Run `agentic-setup setup` once in your terminal. It analyzes your project — la
        (auto, on every commit)
 ```
 
-Pre-commit hooks run the refresh loop automatically. New team members are nudged to run `agentic-setup setup` on their first session.
+Pre-commit hooks run the refresh loop automatically. New team members are nudged to run `npx @arpit-pm1/agentic-setup setup` on their first session.
 
 ### What It Generates
 
@@ -255,7 +265,7 @@ The `refresh` command analyzes your git diff (committed, staged, and unstaged ch
 <details>
 <summary><strong>Team Onboarding</strong></summary>
 
-When agentic-setup is set up in a repo, it automatically nudges new team members to configure it on their machine. A lightweight session hook checks whether the pre-commit hook is installed and prompts them to run `npx agentic-setup setup` in their terminal — no manual coordination needed.
+When agentic-setup is set up in a repo, it automatically nudges new team members to configure it on their machine. A lightweight session hook checks whether the pre-commit hook is installed and prompts them to run `npx @arpit-pm1/agentic-setup setup` in their terminal — no manual coordination needed.
 
 </details>
 
