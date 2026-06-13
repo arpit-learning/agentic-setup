@@ -61,6 +61,8 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "ci:check": "npm run lint && npm run format:check && npx tsc --noEmit && npm test && npm run build",
+    "readme:badges": "tsx scripts/generate-readme-badges.ts",
+    "readme:badges:check": "tsx scripts/generate-readme-badges.ts --check",
     "publish:release": "npm publish --tag latest",
     "publish:alpha": "npm publish --tag alpha",
     "publish:beta": "npm publish --tag beta",
@@ -111,6 +113,7 @@
     "prettier": "^3.8.4",
     "release-it": "^20.2.0",
     "tsdown": "^0.22.2",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0",
     "vitest": "^4.0.18"
