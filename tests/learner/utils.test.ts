@@ -49,7 +49,7 @@ describe('hasTypePrefix', () => {
 
 describe('extractScope', () => {
   it('returns project for **[type:project]** prefix', () => {
-    expect(extractScope('- **[gotcha:project]** tsup swallows errors')).toBe('project');
+    expect(extractScope('- **[gotcha:project]** tsdown swallows errors')).toBe('project');
   });
 
   it('returns personal for **[type:personal]** prefix', () => {
@@ -57,7 +57,7 @@ describe('extractScope', () => {
   });
 
   it('defaults to project when no scope suffix', () => {
-    expect(extractScope('- **[gotcha]** tsup swallows errors')).toBe('project');
+    expect(extractScope('- **[gotcha]** tsdown swallows errors')).toBe('project');
   });
 
   it('defaults to project when no prefix at all', () => {

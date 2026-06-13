@@ -403,12 +403,12 @@ Each type can optionally include a scope suffix to indicate whether the learning
 - **[type:project]** — specific to this codebase (DEFAULT — use when in doubt)
 - **[type:personal]** — specific to the developer's workflow or personal preferences
 
-Use :personal ONLY for user corrections that are clearly personal preferences rather than project requirements. For example, "use bun not npm" is :personal if the project's lockfile doesn't enforce it. "Always run tsc before tsup" is :project because it's about the project's build process. When in doubt, default to :project (or omit the scope entirely, which means :project).
+Use :personal ONLY for user corrections that are clearly personal preferences rather than project requirements. For example, "use bun not npm" is :personal if the project's lockfile doesn't enforce it. "Always run tsc before tsdown" is :project because it's about the project's build process. When in doubt, default to :project (or omit the scope entirely, which means :project).
 
 Good examples:
 - "**[correction]** Files in \`src/generated/\` are auto-generated — never edit them directly"
 - "**[correction]** Use \`pnpm\` not \`npm\` — the lockfile is pnpm-lock.yaml and npm creates conflicts"
-- "**[gotcha]** When \`tsup\` build fails with a type error, run \`npx tsc --noEmit\` first to get the real error — tsup swallows the details"
+- "**[gotcha]** When \`tsdown\` build fails with a type error, run \`npx tsc --noEmit\` first to get the real error — tsdown swallows the details"
 - "**[fix]** If \`npm install\` fails with ERESOLVE, use \`--legacy-peer-deps\`"
 - "**[env]** The test database requires \`DATABASE_URL\` to be set — use \`source .env.test\` first"
 - "**[pattern]** Do NOT run \`jest\` directly — always use \`npm run test\` which sets the correct NODE_ENV"
