@@ -81,7 +81,7 @@ jobs:
           GIT_COMMITTER_EMAIL: github-actions@github.com
           GITHUB_TOKEN: ${{ env.GH_TOKEN }}
         run: |
-          npm run version-bump:${{ inputs.version_bump_type }}:${{ inputs.release_type }} -- --no-git.push
+          npm run version-bump:${{ inputs.version_bump_type }}:${{ inputs.release_type }} -- --no-git.push --no-git.requireUpstream
           VERSION=$(node -p "require('./package.json').version")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           RELEASE_BRANCH="chore/release-v${VERSION}"
