@@ -1,5 +1,6 @@
 import type { ScoreResult, Check, CheckCategory } from './index.js';
 import type { CompositeScore } from '../extensions/composite-score.js';
+import { AGENT_DISPLAY_NAMES } from '../constants.js';
 import { formatCheckPoints } from './display.js';
 import { GRADE_THRESHOLDS } from './constants.js';
 
@@ -50,14 +51,9 @@ function checkHint(check: Check): string {
 }
 
 function formatAgentLabel(targetAgent: ScoreResult['targetAgent']): string {
-  const names: Record<string, string> = {
-    claude: 'Claude Code',
-    cursor: 'Cursor',
-    codex: 'Codex',
-    opencode: 'OpenCode',
-    'github-copilot': 'GitHub Copilot',
-  };
-  return targetAgent.map((a) => names[a] || a).join(' + ');
+  return targetAgent
+    .map((a) => AGENT_DISPLAY_NAMES[a as keyof typeof AGENT_DISPLAY_NAMES] || a)
+    .join(' + ');
 }
 
 function formatCategoryBreakdown(result: ScoreResult): string[] {

@@ -3,19 +3,18 @@
 **Hand-written `CLAUDE.md` files go stale the moment you refactor.** Your AI agent hallucinates paths that no longer exist, misses new dependencies, and gives advice based on yesterday's architecture. agentic-setup generates and maintains your AI context files (`CLAUDE.md`, `.cursor/rules/`, `AGENTS.md`, `copilot-instructions.md`) so they stay accurate as your code evolves — and keeps every agent on your team in sync, whether they use Claude Code, Cursor, Codex, OpenCode, or GitHub Copilot.
 
 <p align="center">
-  <img src="assets/demo-header.gif" alt="agentic-setup product demo" width="900">
-</p>
-
-<p align="center">
+<!-- readme-badges:start -->
   <a href="https://github.com/arpit-pm1/agentic-setup/releases"><img src="https://img.shields.io/github/v/release/arpit-pm1/agentic-setup" alt="release version"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/@arpit-pm1/agentic-setup" alt="license"></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@arpit-pm1/agentic-setup" alt="node"></a>
-  <img src="https://img.shields.io/badge/config-94%2F100-brightgreen" alt="agentic-setup Score">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20.19-green" alt="node"></a>
+  <a href="https://github.com/arpit-pm1/agentic-setup/actions/workflows/ci.yml"><img src="https://github.com/arpit-pm1/agentic-setup/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <img src="https://img.shields.io/badge/config-83%2F100-green" alt="agentic-setup Score">
   <img src="https://img.shields.io/badge/Claude_Code-supported-blue" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cursor-supported-blue" alt="Cursor">
   <img src="https://img.shields.io/badge/Codex-supported-blue" alt="Codex">
   <img src="https://img.shields.io/badge/OpenCode-supported-blue" alt="OpenCode">
   <img src="https://img.shields.io/badge/GitHub_Copilot-supported-blue" alt="GitHub Copilot">
+<!-- readme-badges:end -->
 </p>
 
 ## Before / After
@@ -476,9 +475,11 @@ Uses [conventional commits](https://www.conventionalcommits.org/) — `feat:` fo
 
 ## Add a agentic-setup badge to your repo
 
-After scoring your project, add a badge to your README:
+In **this repository**, the header badges (release, license, Node, CI, config score, supported agents) are generated automatically — run `npm run readme:badges` locally or rely on the [readme-badges workflow](.github/workflows/readme-badges.yml) on pushes to `main`.
 
-![agentic-setup Score](https://img.shields.io/badge/config-94%2F100-brightgreen)
+After scoring **your own project**, add a config score badge to your README:
+
+![agentic-setup Score](https://img.shields.io/badge/config-SCORE%2F100-COLOR)
 
 Copy this markdown and replace `94` with your actual score:
 
