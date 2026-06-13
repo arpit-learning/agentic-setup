@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { AGENTIC_DIR, GITHUB_REPO_URL } from '../constants.js';
+import { AGENTIC_DIR, GITHUB_REPO_URL, SUPPORTED_TARGET_AGENTS } from '../constants.js';
 
 export type SetupProfile = 'auto' | 'api-only' | 'ui-feature' | 'java-service' | 'python-api';
 
-export type TargetAgentName = 'claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot';
+export type TargetAgentName = (typeof SUPPORTED_TARGET_AGENTS)[number];
 
 export interface ProjectConfig {
   version: 1;
@@ -22,13 +22,7 @@ export interface ProjectConfig {
 export const PROJECT_CONFIG_FILENAME = '.agentic-setup.yaml';
 export const PROJECT_CONFIG_INTERNAL = path.join(AGENTIC_DIR, 'project.yaml');
 
-const VALID_AGENTS = new Set<TargetAgentName>([
-  'claude',
-  'cursor',
-  'codex',
-  'opencode',
-  'github-copilot',
-]);
+const VALID_AGENTS = new Set<TargetAgentName>(SUPPORTED_TARGET_AGENTS);
 
 const VALID_PROFILES = new Set<SetupProfile>([
   'auto',

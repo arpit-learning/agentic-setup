@@ -1,12 +1,7 @@
 import chalk from 'chalk';
 import type { ScoreResult, Check, CheckCategory } from './index.js';
+import { AGENT_DISPLAY_NAMES } from '../constants.js';
 import { displayProductName } from '../lib/resolve-cli.js';
-
-const AGENT_DISPLAY_NAMES: Record<string, string> = {
-  claude: 'Claude Code',
-  cursor: 'Cursor',
-  codex: 'Codex',
-};
 
 const CATEGORY_LABELS: Record<CheckCategory, { icon: string; label: string }> = {
   existence: { icon: '📁', label: 'FILES & CONFIG' },
