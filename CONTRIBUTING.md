@@ -15,7 +15,7 @@ npm run build    # Compile
 
 ## Development
 
-- **Build**: `npm run build` (tsup → `dist/`)
+- **Build**: `npm run build` (tsdown → `dist/`)
 - **Watch**: `npm run dev`
 - **Test**: `npm run test` (Vitest)
 - **Type check**: `npx tsc --noEmit`
@@ -167,7 +167,7 @@ Every pull request triggers parallel GitHub Actions jobs:
 | `lint` | ESLint + Prettier format check |
 | `typecheck` | `tsc --noEmit` |
 | `test` | Vitest (Ubuntu + Windows, Node 20 + 22) |
-| `build` | `tsup` build + CLI smoke test |
+| `build` | `tsdown` build + CLI smoke test |
 | `security-audit` | `npm audit --audit-level=high` |
 | `score` | Dogfooded `agentic-setup score --compare` with PR comment |
 | `analyze` (CodeQL) | Static security analysis |

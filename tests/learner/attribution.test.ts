@@ -7,7 +7,7 @@ function makeLearning(overrides: Partial<LearningCostEntry> = {}): LearningCostE
   return {
     timestamp: '2026-01-01T00:00:00Z',
     observationType: 'gotcha',
-    summary: 'tsup swallows type errors',
+    summary: 'tsdown swallows type errors',
     wasteTokens: 500,
     sourceEventCount: 50,
     ...overrides,
@@ -45,12 +45,12 @@ function makeSession(overrides: Partial<SessionROISummary> = {}): SessionROISumm
 describe('matchLearningsToFailures', () => {
   it('matches learnings to failure events by substring similarity', () => {
     const learnings = [
-      makeLearning({ summary: 'tsup swallows type errors' }),
+      makeLearning({ summary: 'tsdown swallows type errors' }),
       makeLearning({ summary: 'always run npm ci before deploy' }),
       makeLearning({ summary: 'use pnpm not npm' }),
     ];
     const failures = [
-      makeFailureEvent('Error: tsup swallows type errors and shows nothing useful'),
+      makeFailureEvent('Error: tsdown swallows type errors and shows nothing useful'),
       makeFailureEvent('Error: cannot find module express'),
     ];
 
@@ -82,10 +82,10 @@ describe('matchLearningsToFailures', () => {
   });
 
   it('matches all when all failures relate to learnings', () => {
-    const learnings = [makeLearning({ summary: 'tsup swallows type errors' })];
+    const learnings = [makeLearning({ summary: 'tsdown swallows type errors' })];
     const failures = [
-      makeFailureEvent('tsup swallows type errors during build'),
-      makeFailureEvent('again tsup swallows type errors silently'),
+      makeFailureEvent('tsdown swallows type errors during build'),
+      makeFailureEvent('again tsdown swallows type errors silently'),
     ];
 
     const result = matchLearningsToFailures(learnings, failures);
@@ -206,7 +206,7 @@ describe('findStaleLearnings', () => {
     const stale = findStaleLearnings(stats);
 
     expect(stale).toHaveLength(1);
-    expect(stale[0].summary).toBe('tsup swallows type errors');
+    expect(stale[0].summary).toBe('tsdown swallows type errors');
   });
 
   it('returns empty when not enough sessions', () => {
