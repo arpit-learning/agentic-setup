@@ -7,7 +7,7 @@
 ## Commands
 
 ```bash
-npm run build        # tsup → dist/
+npm run build        # tsdown → dist/
 npm run dev          # watch mode
 npm run test         # vitest run
 npm run lint         # eslint src/
@@ -17,7 +17,7 @@ npx vitest run tests/scoring/accuracy.test.ts  # single test
 
 ## Architecture
 
-**Entry**: `src/bin.ts` → `src/cli.ts` (Commander.js) · **Config**: `tsconfig.json` · `tsup.config.ts` · `vitest.config.ts` · `eslint.config.js` · `.prettierrc`
+**Entry**: `src/bin.ts` → `src/cli.ts` (Commander.js) · **Config**: `tsconfig.json` · `tsdown.config.ts` · `vitest.config.ts` · `eslint.config.js` · `.prettierrc`
 
 **Commands** (`src/commands/`): `init.ts` · `score.ts` · `refresh.ts` · `regenerate.ts` · `config.ts` · `hooks.ts` · `insights.ts` · `learn.ts` · `recommend.ts` · `sources.ts` · `publish.ts` · `undo.ts` · `status.ts` · `bootstrap.ts` · `uninstall.ts` · Helpers: `init-helpers.ts` · `init-prompts.ts` · `init-display.ts` · `setup-files.ts` · `interactive-provider-setup.ts`
 
