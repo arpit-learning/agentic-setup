@@ -6,6 +6,24 @@ export const GITHUB_REPO_URL = 'https://github.com/arpit-pm1/agentic-setup';
 export const GITHUB_ISSUES_URL = `${GITHUB_REPO_URL}/issues`;
 export const GITHUB_REPO_SLUG = 'arpit-pm1/agentic-setup';
 
+export const SUPPORTED_TARGET_AGENTS = [
+  'claude',
+  'cursor',
+  'codex',
+  'opencode',
+  'github-copilot',
+] as const;
+
+export type SupportedTargetAgent = (typeof SUPPORTED_TARGET_AGENTS)[number];
+
+export const AGENT_DISPLAY_NAMES: Record<SupportedTargetAgent, string> = {
+  claude: 'Claude Code',
+  cursor: 'Cursor',
+  codex: 'Codex',
+  opencode: 'OpenCode',
+  'github-copilot': 'GitHub Copilot',
+};
+
 export const AUTH_DIR = path.join(os.homedir(), '.agentic-setup');
 export const AGENTIC_DIR = '.agentic-setup';
 export const MANIFEST_FILE = path.join(AGENTIC_DIR, 'manifest.json');
