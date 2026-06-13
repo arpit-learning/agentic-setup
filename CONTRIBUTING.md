@@ -15,7 +15,7 @@ npm run build    # Compile
 
 ## Development
 
-- **Build**: `npm run build` (tsup → `dist/`)
+- **Build**: `npm run build` (tsdown → `dist/`)
 - **Watch**: `npm run dev`
 - **Test**: `npm run test` (Vitest)
 - **Type check**: `npx tsc --noEmit`
@@ -43,20 +43,22 @@ npm run build    # Compile
 
 ## Releases
 
-Publishing is **manual** via GitHub Actions (**Actions → Publish Package → Run workflow**).
+Publishing is **manual** via GitHub Actions. Use a **two-step release flow**:
 
-### Workflow inputs
+1. **Version Bump** — bump semver, commit, tag, open PR (merge to land on base branch)
+2. **Publish Package** — validate, build, publish to GitHub Packages, create GitHub Release
+
+### Workflow inputs (Publish Package)
 
 | Input | Options | Purpose |
 |-------|---------|---------|
-| `release_type` | `release`, `alpha`, `beta`, `rc` | npm dist-tag and version shape |
-| `version_bump` | `patch`, `minor`, `major` | Semver bump when `release_type = release` |
+| `release_type` | `release`, `alpha`, `beta`, `rc` | npm dist-tag |
 | `build_type` | `prod`, `beta`, `stage` | `prod` = lint + typecheck + test + build; `beta` = test + build; `stage` = build + smoke only |
-| `branch` | default `main` | Branch to release from |
+| `branch` | default `main` | Branch to publish from (must already have bumped `package.json` + git tag from Version Bump) |
 
 ### Release channels (GitHub Packages)
 
-Each publish bumps semver (patch / minor / major), updates git tags, creates a GitHub Release, and publishes to **GitHub Packages** (`npm.pkg.github.com`).
+Each publish uses the version **already on the branch** (from Version Bump), publishes to **GitHub Packages** (`npm.pkg.github.com`), and creates a GitHub Release for the existing git tag.
 
 | release_type | npm dist-tag | Git tag example | Install |
 |--------------|--------------|-----------------|---------|
@@ -72,30 +74,49 @@ Each publish bumps semver (patch / minor / major), updates git tags, creates a G
 //npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
 ```
 
-Stable releases also append to **`CHANGELOG.md`** via release-it (`@release-it/conventional-changelog`). Prereleases skip changelog generation.
+Stable releases also append to **`CHANGELOG.md`** via release-it during **Version Bump** (`@release-it/conventional-changelog`). Prereleases skip changelog generation.
 
 ### Required secrets
 
 | Secret | Required | Purpose |
 |--------|----------|---------|
-| `RELEASE_TOKEN` | Yes | GitHub PAT: git push, GitHub Releases, **and** GitHub Packages publish |
+| `GH_TOKEN` | Yes | GitHub PAT: Version Bump PRs, GitHub Releases, floating tag push, **and** GitHub Packages publish |
 
-**`RELEASE_TOKEN` setup** (Settings → Secrets and variables → Actions → New repository secret):
+**`GH_TOKEN` setup** (Settings → Secrets and variables → Actions → New repository secret):
 
-1. Create a fine-grained PAT (or classic PAT) with **Contents: Read and write** and **Packages: Read and write** on this repo.
-2. If `main` / `staging` use branch protection, enable **Bypass branch protections** for the PAT user (or use a classic PAT with `repo` + `write:packages` scope).
-3. Add the token as repository secret **`RELEASE_TOKEN`**.
+1. Create a fine-grained PAT (or classic PAT) with **Contents: Read and write**, **Pull requests: Read and write**, and **Packages: Read and write** on this repo.
+2. Add the token as repository secret **`GH_TOKEN`**.
 
-The publish workflow uses `RELEASE_TOKEN` for release-it (commit/tag/push), `npm publish` to GitHub Packages, and `gh release`. No separate `NPM_TOKEN` is required.
+Neither workflow pushes commits directly to protected base branches. **Version Bump** opens a PR; **Publish Package** only publishes npm, creates a GitHub Release, and pushes tag refs (including floating `vMAJOR` on stable).
+
+### Troubleshooting release workflows
+
+**Version Bump** avoids direct pushes to protected base branches — it creates `chore/release-vX.Y.Z`, pushes the tag, and opens a PR. CI checks on the PR satisfy branch protection.
+
+**Publish Package** fails fast if the git tag for `package.json` version is missing:
+
+```text
+Tag vX.Y.Z not found. Run Version Bump, merge the PR, then publish.
+```
+
+**Fix:** run **Version Bump**, merge the PR, then re-run **Publish Package** on the merged branch.
+
+**After a failed Version Bump run:** release-it may have pushed the git tag but not merged the PR. Delete the orphan tag if needed: `git push origin :refs/tags/vX.Y.Z-alpha.N`.
+
+**Re-running Publish Package:** npm rejects duplicate versions. Only re-run if a prior publish failed before `npm publish` completed.
+
+**Verify `GH_TOKEN`:** re-run the workflow — the first step fails fast if the secret is missing.
+
+The publish workflow uses `GH_TOKEN` for `npm publish`, `gh release`, and floating tag push. No separate `NPM_TOKEN` is required.
 
 ### CI release workflows
 
 | Workflow | What it does |
 |----------|--------------|
-| **Version Bump** | release-it only — semver bump, commit, git tag, push (no npm publish, no GitHub Release) |
-| **Publish Package** | validate + build + release-it + publish to GitHub Packages + GitHub Release (+ floating `vMAJOR` on stable) |
+| **Version Bump** | release-it on a release branch → push branch + git tag → open PR to selected base branch (no npm publish, no GitHub Release) |
+| **Publish Package** | validate + build + npm publish to GitHub Packages + GitHub Release (+ floating `vMAJOR` on stable) |
 
-Use **Version Bump** when you only need a tagged version on the branch. Use **Publish Package** for a full consumer-facing release.
+**Recommended flow:** run **Version Bump** → merge PR → run **Publish Package** on the merged branch with matching `release_type`.
 
 ### Local release dry-run
 
@@ -116,7 +137,7 @@ npm run version:print
 npm run ci:check && npm run build
 ```
 
-In CI, release-it commits and pushes (with CHANGELOG on stable releases). **Publish Package** also publishes to GitHub Packages and creates a GitHub Release. Only **`RELEASE_TOKEN`** is required.
+In CI, **Version Bump** commits and tags on a release branch, pushes the branch and tag, and opens a PR (CHANGELOG on stable releases). **Publish Package** publishes the existing version to GitHub Packages and creates a GitHub Release. Only **`GH_TOKEN`** is required.
 
 ### Testing a pre-release
 
@@ -146,7 +167,7 @@ Every pull request triggers parallel GitHub Actions jobs:
 | `lint` | ESLint + Prettier format check |
 | `typecheck` | `tsc --noEmit` |
 | `test` | Vitest (Ubuntu + Windows, Node 20 + 22) |
-| `build` | `tsup` build + CLI smoke test |
+| `build` | `tsdown` build + CLI smoke test |
 | `security-audit` | `npm audit --audit-level=high` |
 | `score` | Dogfooded `agentic-setup score --compare` with PR comment |
 | `analyze` (CodeQL) | Static security analysis |

@@ -14,6 +14,10 @@
     "README.md",
     "LICENSE"
   ],
+  "exports": {
+    ".": "./dist/bin.js",
+    "./package.json": "./package.json"
+  },
   "keywords": [
     "agentic",
     "ai-agent",
@@ -46,8 +50,8 @@
     ]
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "dev:install": "npm run build && npm link",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -95,6 +99,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@release-it/conventional-changelog": "^11.0.1",
     "@types/diff": "^7.0.2",
     "@types/node": "^25.9.3",
     "@vitest/coverage-v8": "^4.0.18",
@@ -104,28 +109,13 @@
     "lint-staged": "^17.0.7",
     "memfs": "^4.57.7",
     "prettier": "^3.8.4",
-    "@release-it/conventional-changelog": "^11.0.1",
     "release-it": "^20.2.0",
-    "tsup": "^8.3.0",
+    "tsdown": "^0.22.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0",
     "vitest": "^4.0.18"
   },
   "overrides": {
     "google-auth-library": "^10.7.0"
-  },
-  "optionalDependencies": {
-    "@rolldown/binding-darwin-arm64": "1.0.3",
-    "@rolldown/binding-darwin-x64": "1.0.3",
-    "@rolldown/binding-linux-arm64-gnu": "1.0.3",
-    "@rolldown/binding-linux-x64-gnu": "1.0.3",
-    "@rolldown/binding-win32-arm64-msvc": "1.0.3",
-    "@rolldown/binding-win32-x64-msvc": "1.0.3",
-    "@rollup/rollup-darwin-arm64": "4.59.0",
-    "@rollup/rollup-darwin-x64": "4.59.0",
-    "@rollup/rollup-linux-arm64-gnu": "4.59.0",
-    "@rollup/rollup-linux-x64-gnu": "4.59.0",
-    "@rollup/rollup-win32-arm64-msvc": "4.59.0",
-    "@rollup/rollup-win32-x64-msvc": "4.59.0"
   }
 }

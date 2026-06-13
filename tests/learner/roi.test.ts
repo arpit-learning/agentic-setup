@@ -40,7 +40,7 @@ function makeLearningEntry(overrides: Partial<LearningCostEntry> = {}): Learning
   return {
     timestamp: '2026-01-01T00:00:00Z',
     observationType: 'gotcha',
-    summary: 'tsup swallows type errors',
+    summary: 'tsdown swallows type errors',
     wasteTokens: 500,
     sourceEventCount: 50,
     ...overrides,
@@ -110,7 +110,7 @@ describe('ROI stats', () => {
 
   it('recordSession with learnings appends both and updates waste total', () => {
     const learnings = [
-      makeLearningEntry({ wasteTokens: 300, summary: 'tsup swallows type errors' }),
+      makeLearningEntry({ wasteTokens: 300, summary: 'tsdown swallows type errors' }),
       makeLearningEntry({
         wasteTokens: 200,
         observationType: 'fix',

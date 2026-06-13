@@ -5,7 +5,7 @@
 ## Commands
 
 ```bash
-npm run build        # tsup → dist/
+npm run build        # tsdown → dist/
 npm run dev          # watch mode
 npm run test         # vitest run
 npm run lint         # eslint src/
@@ -14,7 +14,7 @@ npx tsc --noEmit     # type check
 
 ## Architecture
 
-**Entry**: `src/bin.ts` → `src/cli.ts` · **Build**: `tsup.config.ts` · **Test**: `vitest.config.ts` · **Lint**: `eslint.config.js`
+**Entry**: `src/bin.ts` → `src/cli.ts` · **Build**: `tsdown.config.ts` · **Test**: `vitest.config.ts` · **Lint**: `eslint.config.js`
 
 **Commands** (`src/commands/`): `init.ts` · `score.ts` · `refresh.ts` · `regenerate.ts` · `config.ts` · `hooks.ts` · `learn.ts` · `recommend.ts` · `sources.ts` · `undo.ts` · `status.ts` · `setup-files.ts`
 

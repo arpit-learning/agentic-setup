@@ -140,7 +140,7 @@ describe('writer', () => {
 
       const result = writeLearnedContent({
         claudeMdLearnedSection:
-          '- **[gotcha]** tsup swallows type errors\n- **[env]** DATABASE_URL must be set',
+          '- **[gotcha]** tsdown swallows type errors\n- **[env]** DATABASE_URL must be set',
         skills: null,
       });
 
@@ -219,7 +219,7 @@ describe('writer', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
       const result = writeLearnedContent({
-        claudeMdLearnedSection: '- **[gotcha:project]** tsup swallows errors',
+        claudeMdLearnedSection: '- **[gotcha:project]** tsdown swallows errors',
         skills: null,
       });
 
@@ -235,7 +235,7 @@ describe('writer', () => {
 
       const result = writeLearnedContent({
         claudeMdLearnedSection: [
-          '- **[gotcha:project]** tsup swallows errors',
+          '- **[gotcha:project]** tsdown swallows errors',
           '- **[correction:personal]** use bun not npm',
           '- **[pattern]** run tsc before build',
         ].join('\n'),
