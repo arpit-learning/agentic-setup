@@ -95,6 +95,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@release-it/conventional-changelog": "^11.0.1",
     "@types/diff": "^7.0.2",
     "@types/node": "^25.9.3",
     "@vitest/coverage-v8": "^4.0.18",
@@ -104,9 +105,8 @@
     "lint-staged": "^17.0.7",
     "memfs": "^4.57.7",
     "prettier": "^3.8.4",
-    "@release-it/conventional-changelog": "^11.0.1",
     "release-it": "^20.2.0",
-    "tsup": "^8.3.0",
+    "tsup": "^6.5.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0",
     "vitest": "^4.0.18"
