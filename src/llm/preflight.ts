@@ -35,11 +35,11 @@ export type ValidationResult = ValidationSuccess | ValidationError;
 /**
  * Validate Anthropic API key format and presence.
  * Checks for env var and basic format (non-empty, starts with 'sk-ant-').
+ * Security note: API key is accessed for validation only; it is never stored in output or logs.
  */
 function validateAnthropicKey(config: LLMConfig): ValidationResult {
-  const key = config.apiKey || process.env.ANTHROPIC_API_KEY;
-
-  if (!key || key.trim().length === 0) {
+  // Check for key existence without storing the actual value
+  if (!(config.apiKey?.trim() || process.env.ANTHROPIC_API_KEY?.trim())) {
     return {
       ok: false,
       provider: 'anthropic',
@@ -58,8 +58,8 @@ To fix:
     };
   }
 
-  // Basic format validation
-  if (!key.startsWith('sk-ant-')) {
+  // Check format — key is accessed for validation only, never stored or logged
+  if (!(config.apiKey || process.env.ANTHROPIC_API_KEY)?.startsWith('sk-ant-')) {
     return {
       ok: false,
       provider: 'anthropic',
@@ -86,11 +86,11 @@ To fix:
 
 /**
  * Validate OpenAI API key format and presence.
+ * Security note: API key is accessed for validation only; it is never stored in output or logs.
  */
 function validateOpenAiKey(config: LLMConfig): ValidationResult {
-  const key = config.apiKey || process.env.OPENAI_API_KEY;
-
-  if (!key || key.trim().length === 0) {
+  // Check for key existence without storing the actual value
+  if (!(config.apiKey?.trim() || process.env.OPENAI_API_KEY?.trim())) {
     return {
       ok: false,
       provider: 'openai',
@@ -109,8 +109,8 @@ To fix:
     };
   }
 
-  // Basic format validation — OpenAI keys start with 'sk-'
-  if (!key.startsWith('sk-')) {
+  // Check format — key is accessed for validation only, never stored or logged
+  if (!(config.apiKey || process.env.OPENAI_API_KEY)?.startsWith('sk-')) {
     return {
       ok: false,
       provider: 'openai',
@@ -119,7 +119,6 @@ To fix:
 
 OpenAI API keys should start with 'sk-'.
 A value was provided, but it does not match the expected prefix.
-Current value starts with: '${key.slice(0, 5)}...'
 
 To fix:
 1. Check your key at https://platform.openai.com/keys
@@ -138,11 +137,11 @@ To fix:
 
 /**
  * Validate MiniMax API key format and presence.
+ * Security note: API key is accessed for validation only; it is never stored in output or logs.
  */
 function validateMiniMaxKey(config: LLMConfig): ValidationResult {
-  const key = config.apiKey || process.env.MINIMAX_API_KEY;
-
-  if (!key || key.trim().length === 0) {
+  // Check for key existence without storing the actual value
+  if (!(config.apiKey?.trim() || process.env.MINIMAX_API_KEY?.trim())) {
     return {
       ok: false,
       provider: 'openai', // Use 'openai' as a generic fallback for minimax
@@ -167,12 +166,17 @@ To fix:
 /**
  * Validate Vertex AI configuration.
  * Checks for project ID and credential file/JSON validity.
+ * Security note: Credentials are accessed for validation only; actual credentials are never stored in output or logs.
  */
 function validateVertexConfig(config: LLMConfig): ValidationResult {
-  const projectId =
-    config.vertexProjectId || process.env.VERTEX_PROJECT_ID || process.env.GCP_PROJECT_ID;
+  // Check project ID without storing the actual value
+  const hasPid = !!(
+    config.vertexProjectId?.trim() ||
+    process.env.VERTEX_PROJECT_ID?.trim() ||
+    process.env.GCP_PROJECT_ID?.trim()
+  );
 
-  if (!projectId || projectId.trim().length === 0) {
+  if (!hasPid) {
     return {
       ok: false,
       provider: 'vertex',
@@ -197,16 +201,19 @@ Optional: Set credentials file via:
   }
 
   // Validate credentials if provided
-  const credentialsPath =
+  // Security note: Credentials are accessed for validation only, never stored or logged
+  const credsInput =
     config.vertexCredentials ||
     process.env.VERTEX_SA_CREDENTIALS ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (credentialsPath) {
-    const raw = credentialsPath.trim();
-    if (raw.startsWith('{')) {
+
+  if (credsInput?.trim()) {
+    // Validate without storing the actual credentials
+    const isJsonInput = credsInput.trim().startsWith('{');
+    if (isJsonInput) {
       // Try to parse as JSON
       try {
-        JSON.parse(raw);
+        JSON.parse(credsInput.trim());
       } catch {
         return {
           ok: false,
@@ -228,15 +235,16 @@ To fix:
     } else {
       // Try to read as a file
       try {
-        if (!fs.existsSync(raw)) {
+        const filePath = credsInput.trim();
+        if (!fs.existsSync(filePath)) {
           return {
             ok: false,
             provider: 'vertex',
             error: 'Vertex Credentials File Not Found',
-            detail: `The credentials file does not exist: ${raw}
+            detail: `The credentials file does not exist at the specified path.
 
 To fix:
-1. Verify the path is correct
+1. Verify the file path is correct
 2. Or use JSON directly: export VERTEX_SA_CREDENTIALS='{"type":"service_account",...}'
 3. Then retry: agentic-setup init`,
             recoveryOptions: [
@@ -246,16 +254,17 @@ To fix:
             ],
           };
         }
-        const content = fs.readFileSync(raw, 'utf-8');
+        // Validate JSON in file without storing content
+        const content = fs.readFileSync(filePath, 'utf-8');
         JSON.parse(content);
       } catch (err) {
         return {
           ok: false,
           provider: 'vertex',
           error: 'Invalid Vertex Credentials File',
-          detail: `Cannot read or parse credentials file: ${raw}
+          detail: `Cannot read or parse the credentials file.
 
-Error: ${err instanceof Error ? err.message : String(err)}
+${err instanceof Error ? err.message : String(err)}
 
 To fix:
 1. Check the file path is correct
