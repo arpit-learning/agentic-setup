@@ -6,7 +6,7 @@
   "git": {
     "requireCleanWorkingDir": true,
     "commit": true,
-    "commitMessage": "chore: release v${version} [skip ci]",
+    "commitMessage": "chore: release v${version}",
     "push": true,
     "pushArgs": ["--follow-tags"],
     "tag": true,
