@@ -142,7 +142,7 @@ export async function llmCall(options: LLMCallOptions): Promise<string> {
       const error = err instanceof Error ? err : new Error(String(err));
 
       // Model not available — prompt the user to pick an alternative
-      if (isModelNotAvailableError(error) && cachedConfig) {
+      if (isModelNotAvailableError(error) && cachedConfig && !options.skipModelRecovery) {
         const failedModel = options.model || cachedConfig.model;
         const newModel = await handleModelNotAvailable(failedModel, provider, cachedConfig);
         if (newModel) {
@@ -194,36 +194,48 @@ export async function validateModel(options?: { fast?: boolean }): Promise<void>
   const config = cachedConfig;
   if (!config) return;
 
-  // Seat-based providers use whatever model the service provides; skip validation
   const { isSeatBased } = await import('./types.js');
-  if (isSeatBased(config.provider)) return;
+  const { getFastModel } = await import('./config.js');
+
+  // Seat-based providers skip default-model validation, but stack detection still
+  // uses the fast/scan model — validate it when requested (e.g. init Step 1).
+  if (isSeatBased(config.provider)) {
+    if (!options?.fast) return;
+    const fast = getFastModel();
+    if (!fast || fast === config.model) return;
+    await probeModel(fast, provider, config);
+    return;
+  }
 
   const modelsToCheck = [config.model];
   if (options?.fast) {
-    const { getFastModel } = await import('./config.js');
     const fast = getFastModel();
     if (fast && fast !== config.model) modelsToCheck.push(fast);
   }
 
   for (const model of modelsToCheck) {
-    try {
-      await provider.call({
-        system: 'Respond with OK',
-        prompt: 'ping',
-        model,
-        maxTokens: 1,
-      });
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      if (isModelNotAvailableError(error)) {
-        const newModel = await handleModelNotAvailable(model, provider, config);
-        if (newModel) {
-          resetProvider();
-          return; // provider cache is reset; subsequent calls will use the new model
-        }
-        throw error;
+    await probeModel(model, provider, config);
+  }
+}
+
+async function probeModel(model: string, provider: LLMProvider, config: LLMConfig): Promise<void> {
+  try {
+    await provider.call({
+      system: 'Respond with OK',
+      prompt: 'ping',
+      model,
+      maxTokens: 1,
+    });
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    if (isModelNotAvailableError(error)) {
+      const newModel = await handleModelNotAvailable(model, provider, config);
+      if (newModel) {
+        resetProvider();
+        return;
       }
-      // Non-model errors (network, auth) — don't block startup, let the real call handle it
+      throw error;
     }
+    // Non-model errors (network, auth) — don't block startup, let the real call handle it
   }
 }

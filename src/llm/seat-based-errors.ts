@@ -16,6 +16,11 @@ const ERROR_PATTERNS: Array<{ pattern: RegExp; message: string | (() => string) 
     message: () =>
       `The requested model is not available. Run \`${displayProductName()} config\` to select a different model.`,
   },
+  {
+    pattern: /named models unavailable|free plans can only use auto/i,
+    message: () =>
+      `Named models are unavailable on your Cursor plan. Run \`${displayProductName()} config\` and set the scan model to auto.`,
+  },
 ];
 
 export function parseSeatBasedError(stderr: string, exitCode: number | null): string | null {

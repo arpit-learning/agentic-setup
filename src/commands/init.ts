@@ -25,10 +25,12 @@ import {
   DEFAULT_MODELS,
 } from '../llm/config.js';
 import { validateModel } from '../llm/index.js';
+import { validateLlmSetup, type ValidationError } from '../llm/preflight.js';
 import { runInteractiveProviderSetup } from './interactive-provider-setup.js';
 import { isClaudeCliAvailable, isClaudeCliLoggedIn } from '../llm/claude-cli.js';
 import { isCursorAgentAvailable, isCursorLoggedIn } from '../llm/cursor-acp.js';
 import { isOpenCodeAvailable } from '../llm/opencode.js';
+import { formatValidationError } from '../utils/validation-messages.js';
 import confirm from '@inquirer/confirm';
 import { computeLocalScore } from '../scoring/index.js';
 import { displayScoreDelta, displayScoreSummary } from '../scoring/display.js';
@@ -95,6 +97,39 @@ interface InitOptions {
   autoApprove?: boolean;
   verbose?: boolean;
   thorough?: boolean;
+}
+
+/**
+ * Handle a validation error by offering recovery options to the user.
+ * Returns the user's choice: 'fix-now', 'switch-provider', 'skip', or 'exit'.
+ */
+async function handleValidationError(
+  error: ValidationError,
+  options: InitOptions,
+): Promise<'fix-now' | 'switch-provider' | 'skip' | 'exit'> {
+  if (!process.stdin.isTTY || options.autoApprove) {
+    // In non-interactive mode, default to 'skip' to allow init to proceed without LLM
+    return 'skip';
+  }
+
+  const { default: select } = await import('@inquirer/select');
+  const choice = await select({
+    message: 'How would you like to proceed?',
+    choices: error.recoveryOptions.map((opt: (typeof error.recoveryOptions)[number]) => ({
+      name: opt.label,
+      value: opt.action,
+      description:
+        opt.action === 'fix-now'
+          ? 'Run agentic-setup config'
+          : opt.action === 'switch-provider'
+            ? 'Choose a different provider'
+            : opt.action === 'skip'
+              ? 'Proceed with file analysis only'
+              : 'Exit and abort setup',
+    })),
+  });
+
+  return choice as 'fix-now' | 'switch-provider' | 'skip' | 'exit';
 }
 
 function log(verbose: boolean | undefined, ...args: unknown[]): void {
@@ -481,6 +516,25 @@ export async function initCommand(options: InitOptions) {
   let fingerprint!: Fingerprint;
   const sessionHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
+  // Pre-flight validation: check LLM provider before starting generation
+  const validation = validateLlmSetup();
+  if (!validation.ok) {
+    console.error(formatValidationError(validation));
+
+    // Offer recovery options to user
+    const choice = await handleValidationError(validation, options);
+    if (choice === 'exit') {
+      throw new Error('__exit__');
+    }
+    if (choice === 'skip') {
+      console.log(
+        chalk.yellow(
+          '\n  Skipping LLM-based stack detection. Proceeding with file analysis only...\n',
+        ),
+      );
+    }
+  }
+
   const display = new ParallelTaskDisplay();
   const TASK_STACK = display.add('Detecting project stack', { pipelineLabel: 'Scan' });
   const TASK_CONFIG = display.add('Generating configs', { depth: 1, pipelineLabel: 'Generate' });
@@ -488,10 +542,10 @@ export async function initCommand(options: InitOptions) {
     pipelineLabel: 'Validate',
   });
   display.start();
-  display.enableWaitingContent();
 
   try {
-    // Phase A: Fingerprint
+    // Phase A: Fingerprint — keep waiting carousel off until stack detection finishes
+    // so model-recovery prompts are not hidden behind raw-mode stdin capture.
     display.update(TASK_STACK, 'running');
     fingerprint = await collectFingerprint(process.cwd());
     const projectConfig = readProjectConfig();
@@ -510,6 +564,7 @@ export async function initCommand(options: InitOptions) {
         ? ` (${fingerprint.fileTree.length.toLocaleString()} files, smart sampling active)`
         : '';
     display.update(TASK_STACK, 'done', stackSummary + largeRepoNote);
+    display.enableWaitingContent();
 
     trackInitProjectDiscovered(
       fingerprint.languages.length,
@@ -555,6 +610,7 @@ export async function initCommand(options: InitOptions) {
       display.stop();
       fingerprint.description = await promptInput('What will you build in this project?');
       display.start();
+      display.enableWaitingContent();
     }
 
     // Phase B: Generate configs

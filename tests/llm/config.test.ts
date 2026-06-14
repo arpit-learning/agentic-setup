@@ -375,7 +375,7 @@ describe('config', () => {
 
     it('returns cursor fast model default', () => {
       process.env.AGENTIC_SETUP_USE_CURSOR_SEAT = '1';
-      expect(getFastModel()).toBe('gpt-5.3-codex-fast');
+      expect(getFastModel()).toBe('auto');
     });
 
     it('returns undefined for claude-cli provider', () => {
@@ -386,7 +386,7 @@ describe('config', () => {
     it('ignores ANTHROPIC_SMALL_FAST_MODEL for cursor provider', () => {
       process.env.AGENTIC_SETUP_USE_CURSOR_SEAT = '1';
       process.env.ANTHROPIC_SMALL_FAST_MODEL = 'claude-haiku-4-5';
-      expect(getFastModel()).toBe('gpt-5.3-codex-fast');
+      expect(getFastModel()).toBe('auto');
     });
 
     it('ignores ANTHROPIC_SMALL_FAST_MODEL for openai provider', () => {
@@ -431,7 +431,7 @@ describe('config', () => {
       expect(DEFAULT_FAST_MODELS.anthropic).toBe('claude-haiku-4-5-20251001');
       expect(DEFAULT_FAST_MODELS.vertex).toBe('claude-haiku-4-5-20251001');
       expect(DEFAULT_FAST_MODELS.openai).toBe('gpt-5.4-mini');
-      expect(DEFAULT_FAST_MODELS.cursor).toBe('gpt-5.3-codex-fast');
+      expect(DEFAULT_FAST_MODELS.cursor).toBe('auto');
       expect(DEFAULT_FAST_MODELS['claude-cli']).toBeUndefined();
     });
   });
