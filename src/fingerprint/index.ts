@@ -6,7 +6,7 @@ import { getFileTree } from './file-tree.js';
 import { readExistingConfigs } from './existing-config.js';
 import { analyzeCode, CodeAnalysis } from './code-analysis.js';
 import { detectProjectStack } from '../ai/detect.js';
-import { loadConfig } from '../llm/config.js';
+import { loadConfig, getFastModel } from '../llm/config.js';
 import { loadFingerprintCache, saveFingerprintCache } from './cache.js';
 
 export type { CodeAnalysis };
@@ -105,7 +105,17 @@ async function enrichWithLLM(fingerprint: Fingerprint): Promise<string[]> {
       }
     }
 
-    const result = await detectProjectStack(fingerprint.fileTree, suffixCounts);
+    let result: Awaited<ReturnType<typeof detectProjectStack>>;
+    try {
+      result = await detectProjectStack(fingerprint.fileTree, suffixCounts);
+    } catch (firstErr) {
+      const fast = getFastModel();
+      if (config.provider === 'cursor' && fast && fast !== 'auto') {
+        result = await detectProjectStack(fingerprint.fileTree, suffixCounts, 'auto');
+      } else {
+        throw firstErr;
+      }
+    }
 
     if (result.languages?.length) fingerprint.languages = result.languages;
     if (result.frameworks?.length) fingerprint.frameworks = result.frameworks;

@@ -12,6 +12,7 @@ interface DetectResult {
 export async function detectProjectStack(
   fileTree: string[],
   suffixCounts: Record<string, number>,
+  modelOverride?: string,
 ): Promise<DetectResult> {
   const parts: string[] = [
     'Analyze this project and detect languages, frameworks, and external tools/services.\n',
@@ -31,12 +32,13 @@ export async function detectProjectStack(
     }
   }
 
-  const fastModel = getFastModel();
+  const fastModel = modelOverride ?? getFastModel();
 
   const result = await llmJsonCall<DetectResult>({
     system: FINGERPRINT_SYSTEM_PROMPT,
     prompt: parts.join('\n'),
     ...(fastModel ? { model: fastModel } : {}),
+    skipModelRecovery: true,
   });
 
   return {

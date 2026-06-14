@@ -33,6 +33,8 @@ export interface LLMCallOptions {
   prompt: string;
   model?: string;
   maxTokens?: number;
+  /** When true, skip interactive model recovery (caller handles fallback). */
+  skipModelRecovery?: boolean;
 }
 
 export interface TokenUsage {

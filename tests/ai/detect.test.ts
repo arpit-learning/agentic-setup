@@ -1,5 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const configTestState = vi.hoisted(() => ({
+  actualGetFastModel: null as (() => string | undefined) | null,
+}));
+
+vi.mock('../../src/llm/config.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/llm/config.js')>();
+  configTestState.actualGetFastModel = actual.getFastModel;
+  return {
+    ...actual,
+    getFastModel: vi.fn(actual.getFastModel),
+  };
+});
+
 import { detectProjectStack } from '../../src/ai/detect.js';
+import { getFastModel } from '../../src/llm/config.js';
 
 const mockLlmJsonCall = vi.fn();
 
@@ -10,6 +25,9 @@ vi.mock('../../src/llm/index.js', () => ({
 describe('detectProjectStack', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    if (configTestState.actualGetFastModel) {
+      vi.mocked(getFastModel).mockImplementation(configTestState.actualGetFastModel);
+    }
     delete process.env.AGENTIC_SETUP_FAST_MODEL;
     delete process.env.ANTHROPIC_SMALL_FAST_MODEL;
     mockLlmJsonCall.mockResolvedValue({
@@ -36,13 +54,13 @@ describe('detectProjectStack', () => {
   });
 
   it('falls back to ANTHROPIC_SMALL_FAST_MODEL for backwards compat', async () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
-    process.env.ANTHROPIC_SMALL_FAST_MODEL = 'claude-haiku-4-5';
+    vi.mocked(getFastModel).mockReturnValue('claude-haiku-4-5');
 
     await detectProjectStack(['src/index.ts'], {});
 
     const callArgs = mockLlmJsonCall.mock.calls[0][0];
     expect(callArgs.model).toBe('claude-haiku-4-5');
+    expect(callArgs.skipModelRecovery).toBe(true);
   });
 
   it('prefers AGENTIC_SETUP_FAST_MODEL over ANTHROPIC_SMALL_FAST_MODEL', async () => {

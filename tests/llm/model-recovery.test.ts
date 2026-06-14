@@ -76,6 +76,14 @@ describe('isModelNotAvailableError', () => {
     expect(isModelNotAvailableError(err)).toBe(false);
   });
 
+  it('detects "named models unavailable" messages (Cursor free tier)', () => {
+    expect(
+      isModelNotAvailableError(
+        new Error('Named models unavailable Free plans can only use Auto'),
+      ),
+    ).toBe(true);
+  });
+
   it('returns false for overloaded errors', () => {
     expect(isModelNotAvailableError(new Error('529 overloaded'))).toBe(false);
   });
