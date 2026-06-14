@@ -67,7 +67,7 @@ To fix:
       detail: `The ANTHROPIC_API_KEY has an invalid format.
 
 Anthropic API keys should start with 'sk-ant-'.
-Current value starts with: '${key.slice(0, 10)}...'
+A value was provided, but it does not match the expected prefix.
 
 To fix:
 1. Check your key at https://console.anthropic.com/keys
@@ -118,6 +118,7 @@ To fix:
       detail: `The OPENAI_API_KEY has an invalid format.
 
 OpenAI API keys should start with 'sk-'.
+A value was provided, but it does not match the expected prefix.
 Current value starts with: '${key.slice(0, 5)}...'
 
 To fix:
