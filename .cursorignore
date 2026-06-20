@@ -1,0 +1,15 @@
+# agentic-setup: context boundaries
+node_modules/
+dist/
+build/
+target/
+.gradle/
+.git/
+.agentic-setup/
+.codegraph/
+.neo4j/
+.agents/
+codegraph.db
+*.log
+.env
+.env.*

@@ -16,3 +16,10 @@ npm-debug.log*
 
 # roro workspace
 .roro/
+
+# agentic-setup codegraph
+.codegraph/
+codegraph.db
+.neo4j/
+.agentic-setup/index-codegraph.js
+.agentic-setup/codegraph-mcp-server.js

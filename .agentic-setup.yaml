@@ -1,0 +1,14 @@
+# agentic-setup project configuration
+# https://github.com/arpit-pm1/agentic-setup
+
+version: 1
+agents: [github-copilot]
+profile: auto
+codegraph: true
+analyze_on_setup: true
+readiness_threshold: 60
+config_score_threshold: 60
+run:
+  generate: true
+ci:
+  workflow: false
