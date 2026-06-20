@@ -26,7 +26,11 @@ import { publishCommand } from './commands/publish.js';
 import { uninstallCommand } from './commands/uninstall.js';
 import { analyzeCommand } from './commands/analyze.js';
 import { doctorCommand } from './commands/doctor.js';
-import { codegraphSetupCommand } from './commands/codegraph.js';
+import {
+  codegraphSetupCommand,
+  codegraphIndexCommand,
+  codegraphServeCommand,
+} from './commands/codegraph.js';
 import { compositeScoreCommand } from './commands/composite-score.js';
 import { setupCommand } from './commands/setup.js';
 import { checkCommand } from './commands/check.js';
@@ -349,6 +353,17 @@ codegraph
   .option('--dry-run', 'Preview without writing files')
   .option('--skip-index', 'Configure MCP only, skip indexing')
   .action(tracked('codegraph:setup', codegraphSetupCommand));
+
+codegraph
+  .command('index')
+  .description('Index repository with Tree-sitter WASM and build local codegraph')
+  .action(tracked('codegraph:index', codegraphIndexCommand));
+
+codegraph
+  .command('serve')
+  .description('Start Stdio MCP server for local codegraph')
+  .argument('[workspace]', 'Workspace directory path')
+  .action(tracked('codegraph:serve', codegraphServeCommand));
 
 program
   .command('readiness')

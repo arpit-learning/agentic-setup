@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "codegraph": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/.agentic-setup/codegraph-mcp-server.js"
+      ]
+    }
+  }
+}
