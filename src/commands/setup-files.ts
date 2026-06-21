@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { GITHUB_REPO_URL } from '../constants.js';
+import { GITHUB_REPO_URL, type SupportedTargetAgent } from '../constants.js';
 import { buildSkillContent } from '../lib/skill-content.js';
 import { sanitizePath } from '../lib/sanitize.js';
 
@@ -7,7 +7,7 @@ export { buildSkillContent };
 
 export function collectSetupFiles(
   setup: Record<string, unknown>,
-  targetAgent?: ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[],
+  targetAgent?: SupportedTargetAgent[],
 ): Array<{ path: string; content: string }> {
   const files: Array<{ path: string; content: string }> = [];
   const claude = setup.claude as Record<string, unknown> | undefined;

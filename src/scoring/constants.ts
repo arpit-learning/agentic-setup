@@ -148,6 +148,8 @@ export const CODEX_ONLY_CHECKS = new Set(['codex_agents_md_exists']);
 
 export const OPENCODE_ONLY_CHECKS = new Set(['opencode_config_exists']);
 
+export const ANTIGRAVITY_ONLY_CHECKS = new Set(['antigravity_config_exists']);
+
 export const COPILOT_ONLY_CHECKS = new Set(['copilot_instructions_exists']);
 
 /** Checks that should NOT appear for codex targets (avoid double-counting). */

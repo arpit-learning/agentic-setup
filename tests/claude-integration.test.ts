@@ -211,6 +211,23 @@ describe('Existing config detection', () => {
     expect(configs.includableDocs).toContain('CONTRIBUTING.md');
   });
 
+  it('detects and reads contents of includable documentation files', () => {
+    writeFileSync(join(dir, 'ARCHITECTURE.md'), '# Architecture Content');
+    writeFileSync(join(dir, 'CONTRIBUTING.md'), '# Contributing Content');
+
+    const configs = readExistingConfigs(dir);
+    expect(configs.includableDocContents).toBeDefined();
+    expect(configs.includableDocContents).toHaveLength(2);
+    expect(configs.includableDocContents).toContainEqual({
+      path: 'ARCHITECTURE.md',
+      content: '# Architecture Content',
+    });
+    expect(configs.includableDocContents).toContainEqual({
+      path: 'CONTRIBUTING.md',
+      content: '# Contributing Content',
+    });
+  });
+
   it('does not include non-existent docs in includableDocs', () => {
     const configs = readExistingConfigs(dir);
     expect(configs.includableDocs).toBeUndefined();
@@ -245,6 +262,21 @@ describe('Init prompt includes new context', () => {
     expect(prompt).toContain('Existing Documentation Files');
     expect(prompt).toContain('ARCHITECTURE.md');
     expect(prompt).toContain('CONTRIBUTING.md');
+  });
+
+  it('includes inlined documentation contents in generation prompt', () => {
+    const fp = makeFingerprint({
+      existingConfigs: {
+        claudeMd: '# Project',
+        includableDocs: ['ARCHITECTURE.md'],
+        includableDocContents: [{ path: 'ARCHITECTURE.md', content: '# Architecture Content' }],
+      },
+    });
+
+    const prompt = buildGeneratePrompt(fp, ['claude']);
+    expect(prompt).toContain('Documentation File Contents');
+    expect(prompt).toContain('[ARCHITECTURE.md]');
+    expect(prompt).toContain('# Architecture Content');
   });
 
   it('treats claudeRules as existing config for audit mode', () => {

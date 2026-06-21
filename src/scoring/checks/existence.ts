@@ -219,6 +219,29 @@ export function checkExistence(dir: string): Check[] {
         },
   });
 
+  // 2e. Antigravity IDE config exists
+  const antigravityDir = join(dir, '.gemini');
+  const antigravityExists = existsSync(antigravityDir);
+  checks.push({
+    id: 'antigravity_config_exists',
+    name: 'Antigravity IDE config exists',
+    category: 'existence',
+    maxPoints: POINTS_CLAUDE_MD_EXISTS,
+    earnedPoints: antigravityExists ? POINTS_CLAUDE_MD_EXISTS : 0,
+    passed: antigravityExists,
+    detail: antigravityExists ? 'Found .gemini/' : 'Not found',
+    suggestion: antigravityExists
+      ? undefined
+      : 'Create .gemini/rules/ with Antigravity agent configuration',
+    fix: antigravityExists
+      ? undefined
+      : {
+          action: 'create_file',
+          data: { file: '.gemini/rules/' },
+          instruction: 'Create .gemini/rules/ directory with Antigravity configuration.',
+        },
+  });
+
   // 3. Cursor .mdc rules
   const mdcFiles = countFiles(join(dir, '.cursor', 'rules'), /\.mdc$/);
   const mdcCount = mdcFiles.length;

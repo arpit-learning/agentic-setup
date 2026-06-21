@@ -14,6 +14,7 @@ export const DEFAULT_MODELS: Record<ProviderType, string> = {
   cursor: 'auto',
   'claude-cli': 'default',
   opencode: 'default',
+  antigravity: 'default',
 };
 
 export const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
@@ -50,6 +51,7 @@ export const DEFAULT_FAST_MODELS: Partial<Record<ProviderType, string>> = {
   openai: 'gpt-5.4-mini',
   minimax: 'MiniMax-M2.7-highspeed',
   cursor: 'gpt-5.3-codex-fast',
+  antigravity: 'default',
 };
 
 export function loadConfig(): LLMConfig | null {
@@ -132,6 +134,17 @@ export function resolveFromEnv(): LLMConfig | null {
     };
   }
 
+  // Prefer Antigravity (uses antigravity CLI; no API key)
+  const useAntigravity =
+    process.env.AGENTIC_SETUP_USE_ANTIGRAVITY === '1' ||
+    process.env.AGENTIC_SETUP_USE_ANTIGRAVITY === 'true';
+  if (useAntigravity) {
+    return {
+      provider: 'antigravity',
+      model: process.env.AGENTIC_SETUP_MODEL || DEFAULT_MODELS.antigravity,
+    };
+  }
+
   return null;
 }
 
@@ -142,9 +155,16 @@ export function readConfigFile(): LLMConfig | null {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (
       !parsed.provider ||
-      !['anthropic', 'vertex', 'openai', 'minimax', 'cursor', 'claude-cli', 'opencode'].includes(
-        parsed.provider as string,
-      )
+      ![
+        'anthropic',
+        'vertex',
+        'openai',
+        'minimax',
+        'cursor',
+        'claude-cli',
+        'opencode',
+        'antigravity',
+      ].includes(parsed.provider as string)
     ) {
       return null;
     }
@@ -177,6 +197,9 @@ export function getDisplayModel(config: { provider: string; model: string }): st
   }
   if (config.model === 'default' && config.provider === 'opencode') {
     return 'default (inherited from OpenCode)';
+  }
+  if (config.model === 'default' && config.provider === 'antigravity') {
+    return 'default (inherited from Antigravity)';
   }
   return config.model;
 }

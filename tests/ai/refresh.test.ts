@@ -1,5 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const configTestState = vi.hoisted(() => ({
+  actualGetFastModel: null as (() => string | undefined) | null,
+}));
+
+vi.mock('../../src/llm/config.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/llm/config.js')>();
+  configTestState.actualGetFastModel = actual.getFastModel;
+  return {
+    ...actual,
+    getFastModel: vi.fn(actual.getFastModel),
+  };
+});
+
 vi.mock('../../src/llm/index.js', () => ({
   llmCall: vi.fn(),
   parseJsonResponse: vi.fn(),
@@ -7,6 +20,7 @@ vi.mock('../../src/llm/index.js', () => ({
 
 import { refreshDocs } from '../../src/ai/refresh.js';
 import { llmCall, parseJsonResponse } from '../../src/llm/index.js';
+import { getFastModel } from '../../src/llm/config.js';
 
 const mockedLlmCall = vi.mocked(llmCall);
 const mockedParseJson = vi.mocked(parseJsonResponse);
@@ -14,6 +28,9 @@ const mockedParseJson = vi.mocked(parseJsonResponse);
 describe('refreshDocs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    if (configTestState.actualGetFastModel) {
+      vi.mocked(getFastModel).mockImplementation(configTestState.actualGetFastModel);
+    }
     delete process.env.AGENTIC_SETUP_FAST_MODEL;
     delete process.env.ANTHROPIC_SMALL_FAST_MODEL;
   });
@@ -136,6 +153,16 @@ describe('refreshDocs', () => {
     expect(prompt).toContain('CONTRIBUTING.md');
   });
 
+  it('includes inlined doc contents in refresh prompt', async () => {
+    const prompt = await getRefreshPrompt({
+      includableDocs: ['ARCHITECTURE.md'],
+      includableDocContents: [{ path: 'ARCHITECTURE.md', content: '# Architecture Content' }],
+    });
+    expect(prompt).toContain('Documentation File Contents');
+    expect(prompt).toContain('[ARCHITECTURE.md]');
+    expect(prompt).toContain('# Architecture Content');
+  });
+
   it('omits empty diff sections', async () => {
     mockedLlmCall.mockResolvedValue('{}');
     mockedParseJson.mockReturnValue({
@@ -184,8 +211,7 @@ describe('refreshDocs', () => {
   });
 
   it('falls back to ANTHROPIC_SMALL_FAST_MODEL', async () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
-    process.env.ANTHROPIC_SMALL_FAST_MODEL = 'claude-haiku-4-5';
+    vi.mocked(getFastModel).mockReturnValue('claude-haiku-4-5');
     mockedLlmCall.mockResolvedValue('{}');
     mockedParseJson.mockReturnValue({ updatedDocs: {}, changesSummary: '', docsUpdated: [] });
 

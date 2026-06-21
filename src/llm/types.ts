@@ -5,12 +5,14 @@ export type ProviderType =
   | 'minimax'
   | 'cursor'
   | 'claude-cli'
-  | 'opencode';
+  | 'opencode'
+  | 'antigravity';
 
 const SEAT_BASED_PROVIDERS: ReadonlySet<ProviderType> = new Set([
   'cursor',
   'claude-cli',
   'opencode',
+  'antigravity',
 ]);
 
 export function isSeatBased(provider: ProviderType | string): boolean {
@@ -33,6 +35,8 @@ export interface LLMCallOptions {
   prompt: string;
   model?: string;
   maxTokens?: number;
+  /** When true, skip interactive model recovery (caller handles fallback). */
+  skipModelRecovery?: boolean;
 }
 
 export interface TokenUsage {

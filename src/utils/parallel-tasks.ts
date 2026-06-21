@@ -20,6 +20,18 @@ const CARD_ADVANCE_MS = 15_000;
 const NAME_COL_WIDTH = 30;
 const PREFIX = '    ';
 
+let activeTaskDisplay: ParallelTaskDisplay | null = null;
+
+/** Pause spinner / waiting UI so an inquirer prompt can use stdin. */
+export function pauseActiveTaskDisplayForPrompt(): void {
+  activeTaskDisplay?.pauseForInteractivePrompt();
+}
+
+/** Resume spinner / waiting UI after an interactive prompt completes. */
+export function resumeActiveTaskDisplayAfterPrompt(): void {
+  activeTaskDisplay?.resumeAfterInteractivePrompt();
+}
+
 export class ParallelTaskDisplay {
   private tasks: TaskState[] = [];
   private lineCount = 0;
@@ -37,6 +49,9 @@ export class ParallelTaskDisplay {
   private cachedCardIndex = -1;
   private cachedCardCols = -1;
   private cachedConnectors: string[] | null = null;
+
+  private waitingWasEnabled = false;
+  private spinnerWasRunning = false;
 
   private previewLines: string[] = [];
   private previewUpdatedAt = 0;
@@ -66,6 +81,42 @@ export class ParallelTaskDisplay {
     }, SPINNER_INTERVAL_MS);
   }
 
+  /** Release stdin and clear the live display before an interactive prompt. */
+  pauseForInteractivePrompt(): void {
+    this.spinnerWasRunning = this.timer !== null;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+
+    this.waitingWasEnabled = this.waitingEnabled;
+    if (this.waitingEnabled) {
+      this.disableWaitingContent();
+    }
+
+    if (this.rendered && this.lineCount > 0) {
+      process.stdout.write(`\x1b[${this.lineCount}A\x1b[0J`);
+      this.lineCount = 0;
+      this.rendered = false;
+    }
+  }
+
+  /** Restore spinner / waiting UI after an interactive prompt. */
+  resumeAfterInteractivePrompt(): void {
+    if (!this.spinnerWasRunning) return;
+
+    this.timer = setInterval(() => {
+      this.spinnerFrame = (this.spinnerFrame + 1) % SPINNER_FRAMES.length;
+      this.draw(false);
+    }, SPINNER_INTERVAL_MS);
+
+    if (this.waitingWasEnabled) {
+      this.enableWaitingContent();
+    }
+
+    this.draw(true);
+  }
+
   update(index: number, status: TaskStatus, message?: string): void {
     const task = this.tasks[index];
     if (!task) return;
@@ -80,7 +131,7 @@ export class ParallelTaskDisplay {
   }
 
   enableWaitingContent(): void {
-    if (!process.stdin.isTTY) return;
+    if (!process.stdin.isTTY || this.waitingEnabled) return;
 
     this.waitingCards = WAITING_CARDS;
     if (this.waitingCards.length === 0) return;
@@ -132,6 +183,9 @@ export class ParallelTaskDisplay {
       this.timer = null;
     }
     this.draw(false);
+    if (activeTaskDisplay === this) {
+      activeTaskDisplay = null;
+    }
   }
 
   private advanceCard(offset: number): void {
@@ -288,10 +342,11 @@ export class ParallelTaskDisplay {
 
   private draw(initial: boolean): void {
     const { stdout } = process;
-    if (!initial && this.rendered && this.lineCount > 0) {
+    // Only use ANSI cursor movement if stdout is a TTY
+    if (stdout.isTTY && !initial && this.rendered && this.lineCount > 0) {
       stdout.write(`\x1b[${this.lineCount}A`);
+      stdout.write('\x1b[0J');
     }
-    stdout.write('\x1b[0J');
 
     const pipelineHeader = this.renderPipelineHeader();
     const taskLines = this.tasks.map((t, i) => this.renderLine(t, i));

@@ -7,6 +7,11 @@ import { MiniMaxProvider } from './minimax.js';
 import { CursorAcpProvider, isCursorAgentAvailable, isCursorLoggedIn } from './cursor-acp.js';
 import { ClaudeCliProvider, isClaudeCliAvailable, isClaudeCliLoggedIn } from './claude-cli.js';
 import { OpenCodeProvider, isOpenCodeAvailable, isOpenCodeLoggedIn } from './opencode.js';
+import {
+  AntigravityProvider,
+  isAntigravityAvailable,
+  isAntigravityLoggedIn,
+} from './antigravity.js';
 import { parseJsonResponse, extractJson, estimateTokens } from './utils.js';
 import { isModelNotAvailableError, handleModelNotAvailable } from './model-recovery.js';
 import { isRateLimitError } from './seat-based-errors.js';
@@ -73,6 +78,19 @@ function createProvider(config: LLMConfig): LLMProvider {
       }
       return new OpenCodeProvider(config);
     }
+    case 'antigravity': {
+      if (!isAntigravityAvailable()) {
+        throw new Error(
+          'Antigravity provider requires the `agy` CLI. Install it from https://goo.gle/agy and run `agy` once to authenticate. Alternatively set ANTHROPIC_API_KEY or choose another provider.',
+        );
+      }
+      if (!isAntigravityLoggedIn()) {
+        throw new Error(
+          'Antigravity CLI (agy) is installed but not authenticated. Run `agy` once and sign in with your Google account, then retry.',
+        );
+      }
+      return new AntigravityProvider(config);
+    }
 
     default:
       throw new Error(`Unknown provider: ${config.provider}`);
@@ -85,7 +103,7 @@ export function getProvider(): LLMProvider {
   const config = loadConfig();
   if (!config) {
     throw new Error(
-      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, or OpenCode; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1.`,
+      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, OpenCode, or Antigravity; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1 / AGENTIC_SETUP_USE_ANTIGRAVITY=1.`,
     );
   }
 
@@ -100,7 +118,7 @@ export function getConfig(): LLMConfig {
   const config = loadConfig();
   if (!config) {
     throw new Error(
-      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, or OpenCode; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1.`,
+      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, OpenCode, or Antigravity; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1 / AGENTIC_SETUP_USE_ANTIGRAVITY=1.`,
     );
   }
 
@@ -142,7 +160,7 @@ export async function llmCall(options: LLMCallOptions): Promise<string> {
       const error = err instanceof Error ? err : new Error(String(err));
 
       // Model not available — prompt the user to pick an alternative
-      if (isModelNotAvailableError(error) && cachedConfig) {
+      if (isModelNotAvailableError(error) && cachedConfig && !options.skipModelRecovery) {
         const failedModel = options.model || cachedConfig.model;
         const newModel = await handleModelNotAvailable(failedModel, provider, cachedConfig);
         if (newModel) {
@@ -194,36 +212,48 @@ export async function validateModel(options?: { fast?: boolean }): Promise<void>
   const config = cachedConfig;
   if (!config) return;
 
-  // Seat-based providers use whatever model the service provides; skip validation
   const { isSeatBased } = await import('./types.js');
-  if (isSeatBased(config.provider)) return;
+  const { getFastModel } = await import('./config.js');
+
+  // Seat-based providers skip default-model validation, but stack detection still
+  // uses the fast/scan model — validate it when requested (e.g. init Step 1).
+  if (isSeatBased(config.provider)) {
+    if (!options?.fast) return;
+    const fast = getFastModel();
+    if (!fast || fast === config.model) return;
+    await probeModel(fast, provider, config);
+    return;
+  }
 
   const modelsToCheck = [config.model];
   if (options?.fast) {
-    const { getFastModel } = await import('./config.js');
     const fast = getFastModel();
     if (fast && fast !== config.model) modelsToCheck.push(fast);
   }
 
   for (const model of modelsToCheck) {
-    try {
-      await provider.call({
-        system: 'Respond with OK',
-        prompt: 'ping',
-        model,
-        maxTokens: 1,
-      });
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      if (isModelNotAvailableError(error)) {
-        const newModel = await handleModelNotAvailable(model, provider, config);
-        if (newModel) {
-          resetProvider();
-          return; // provider cache is reset; subsequent calls will use the new model
-        }
-        throw error;
+    await probeModel(model, provider, config);
+  }
+}
+
+async function probeModel(model: string, provider: LLMProvider, config: LLMConfig): Promise<void> {
+  try {
+    await provider.call({
+      system: 'Respond with OK',
+      prompt: 'ping',
+      model,
+      maxTokens: 1,
+    });
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    if (isModelNotAvailableError(error)) {
+      const newModel = await handleModelNotAvailable(model, provider, config);
+      if (newModel) {
+        resetProvider();
+        return;
       }
-      // Non-model errors (network, auth) — don't block startup, let the real call handle it
+      throw error;
     }
+    // Non-model errors (network, auth) — don't block startup, let the real call handle it
   }
 }

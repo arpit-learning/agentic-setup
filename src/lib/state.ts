@@ -1,24 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { AGENTIC_DIR } from '../constants.js';
+import { AGENTIC_DIR, SUPPORTED_TARGET_AGENTS, type SupportedTargetAgent } from '../constants.js';
 
 const STATE_FILE = path.join(AGENTIC_DIR, '.agentic-state.json');
 
 interface AgenticState {
   lastRefreshSha: string;
   lastRefreshTimestamp: string;
-  targetAgent?: ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[];
+  targetAgent?: SupportedTargetAgent[];
 }
 
-function normalizeTargetAgent(
-  value: unknown,
-): ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[] | undefined {
-  if (Array.isArray(value)) return value;
+function normalizeTargetAgent(value: unknown): SupportedTargetAgent[] | undefined {
+  if (Array.isArray(value)) return value as SupportedTargetAgent[];
   if (typeof value === 'string') {
     if (value === 'both') return ['claude', 'cursor'];
-    if (['claude', 'cursor', 'codex', 'opencode', 'github-copilot'].includes(value))
-      return [value as 'claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot'];
+    if ((SUPPORTED_TARGET_AGENTS as readonly string[]).includes(value))
+      return [value as SupportedTargetAgent];
   }
   return undefined;
 }

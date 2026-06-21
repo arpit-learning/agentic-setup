@@ -1,9 +1,9 @@
-import { GITHUB_REPO_SLUG, GITHUB_REPO_URL } from '../constants.js';
+import { GITHUB_REPO_SLUG, GITHUB_REPO_URL, type SupportedTargetAgent } from '../constants.js';
 import { displayProductName } from '../lib/resolve-cli.js';
 import { DEFAULT_MODELS } from '../llm/config.js';
 
-export type ConfigPlatform = 'claude' | 'copilot' | 'codex';
-export type TargetAgent = 'claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot';
+export type ConfigPlatform = 'claude' | 'copilot' | 'codex' | 'antigravity';
+export type TargetAgent = SupportedTargetAgent;
 
 const BLOCK_START = '<!-- agentic:managed:pre-commit -->';
 const BLOCK_END = '<!-- /agentic:managed:pre-commit -->';

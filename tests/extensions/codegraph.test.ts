@@ -19,40 +19,25 @@ describe('checkCodegraphCli', () => {
     execFileSync.mockReset();
   });
 
-  it('does not invoke npx -y (avoids cold-cache downloads in CI)', () => {
-    checkCodegraphCli(tmpDir);
-
-    const npxCalls = execFileSync.mock.calls.filter(([cmd]) => cmd === 'npx');
-    for (const [, args] of npxCalls) {
-      expect(args).not.toContain('-y');
-    }
-  });
-
-  it('uses npx --no-install when no local binary exists', () => {
-    checkCodegraphCli(tmpDir);
-
-    expect(execFileSync).toHaveBeenCalledWith(
-      'npx',
-      ['--no-install', 'codegraph-ai', '--version'],
-      expect.objectContaining({ timeout: 3_000 }),
-    );
-  });
-
-  it('prefers node_modules/.bin over npx', () => {
-    const binDir = path.join(tmpDir, 'node_modules', '.bin');
-    fs.mkdirSync(binDir, { recursive: true });
-    const localBin = path.join(binDir, 'codegraph-ai');
-    fs.writeFileSync(localBin, '#!/bin/sh\necho 1.0.0\n');
-    execFileSync.mockReturnValue('1.0.0');
+  it('returns available: true and no missing when node is found', () => {
+    execFileSync.mockReturnValue('v20.0.0');
 
     const result = checkCodegraphCli(tmpDir);
 
-    expect(result).toEqual({ available: true, version: '1.0.0' });
-    expect(execFileSync).toHaveBeenCalledWith(
-      localBin,
-      ['--version'],
-      expect.objectContaining({ timeout: 3_000 }),
-    );
-    expect(execFileSync).not.toHaveBeenCalledWith('npx', expect.any(Array), expect.any(Object));
+    expect(result).toEqual({ available: true, missing: undefined });
+    expect(execFileSync).toHaveBeenCalledWith('node', ['--version'], expect.any(Object));
+  });
+
+  it('returns available: false and marks node as missing if node check throws', () => {
+    execFileSync.mockImplementation(() => {
+      throw new Error('Not found');
+    });
+
+    const result = checkCodegraphCli(tmpDir);
+
+    expect(result).toEqual({
+      available: false,
+      missing: ['node'],
+    });
   });
 });
