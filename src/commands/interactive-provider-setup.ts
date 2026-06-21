@@ -11,6 +11,7 @@ import {
 } from '../llm/cursor-acp.js';
 import { isClaudeCliAvailable, isClaudeCliLoggedIn } from '../llm/claude-cli.js';
 import { isOpenCodeAvailable, isOpenCodeLoggedIn } from '../llm/opencode.js';
+import { isAntigravityAvailable, isAntigravityLoggedIn } from '../llm/antigravity.js';
 import { promptInput } from '../utils/prompt.js';
 
 const IS_WINDOWS = process.platform === 'win32';
@@ -19,6 +20,7 @@ const PROVIDER_CHOICES: Array<{ name: string; value: ProviderType }> = [
   { name: 'Claude Code — use your existing subscription (no API key)', value: 'claude-cli' },
   { name: 'OpenCode — use your existing subscription (no API key)', value: 'opencode' },
   { name: 'Cursor — use your existing subscription (no API key)', value: 'cursor' },
+  { name: 'Antigravity — use your existing subscription (no API key)', value: 'antigravity' },
   { name: 'Anthropic — API key from console.anthropic.com', value: 'anthropic' },
   { name: 'Google Vertex AI — Claude models via GCP', value: 'vertex' },
   { name: 'OpenAI — or any OpenAI-compatible endpoint', value: 'openai' },
@@ -97,6 +99,32 @@ export async function runInteractiveProviderSetup(options?: {
       config.model =
         (await promptInput(`Model (default: ${DEFAULT_MODELS.opencode}):`)) ||
         DEFAULT_MODELS.opencode;
+      break;
+    }
+    case 'antigravity': {
+      if (!isAntigravityAvailable()) {
+        console.log(chalk.yellow('\n  Antigravity CLI not found.'));
+        console.log(chalk.dim('  Please install Antigravity CLI and ensure it is on your PATH.'));
+        console.log(
+          chalk.dim('  Then run ') +
+            chalk.hex('#83D1EB')('antigravity auth login') +
+            chalk.dim(' to authenticate.\n'),
+        );
+        const proceed = await confirm({ message: 'Continue anyway?' });
+        if (!proceed) throw new Error('__exit__');
+      } else if (!isAntigravityLoggedIn()) {
+        console.log(chalk.yellow('\n  Antigravity CLI found but not logged in.'));
+        console.log(
+          chalk.dim('  Run ') +
+            chalk.hex('#83D1EB')('antigravity auth login') +
+            chalk.dim(' to authenticate.\n'),
+        );
+        const proceed = await confirm({ message: 'Continue anyway?' });
+        if (!proceed) throw new Error('__exit__');
+      }
+      config.model =
+        (await promptInput(`Model (default: ${DEFAULT_MODELS.antigravity}):`)) ||
+        DEFAULT_MODELS.antigravity;
       break;
     }
     case 'cursor': {

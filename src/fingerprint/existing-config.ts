@@ -11,12 +11,22 @@ const INCLUDABLE_DOC_PATTERNS = [
   'CONTRIBUTING.md',
   'DEVELOPMENT.md',
   'SETUP.md',
+  'INSTALL.md',
+  'BUILD.md',
+  'DEPLOYMENT.md',
+  'TESTING.md',
+  'run.md',
   'docs/ARCHITECTURE.md',
   'docs/CONTRIBUTING.md',
   'docs/DEVELOPMENT.md',
   'docs/API.md',
   'docs/GUIDE.md',
   'docs/SETUP.md',
+  'docs/INSTALL.md',
+  'docs/BUILD.md',
+  'docs/DEPLOYMENT.md',
+  'docs/TESTING.md',
+  'docs/run.md',
 ];
 
 function readSkillsFromDir(skillsDir: string): SkillEntry[] | undefined {
@@ -63,6 +73,7 @@ export function readExistingConfigs(dir: string) {
     cursorMcpServers?: Record<string, unknown>;
     personalLearnings?: string;
     includableDocs?: string[];
+    includableDocContents?: Array<{ path: string; content: string }>;
   } = {};
 
   // README.md
@@ -222,7 +233,19 @@ export function readExistingConfigs(dir: string) {
   }
 
   const found = INCLUDABLE_DOC_PATTERNS.filter((p) => fs.existsSync(path.join(dir, p)));
-  if (found.length > 0) configs.includableDocs = found;
+  if (found.length > 0) {
+    configs.includableDocs = found;
+    configs.includableDocContents = found.map((p) => {
+      try {
+        return {
+          path: p,
+          content: fs.readFileSync(path.join(dir, p), 'utf-8'),
+        };
+      } catch {
+        return { path: p, content: '' };
+      }
+    });
+  }
 
   return configs;
 }

@@ -335,6 +335,14 @@ function buildSkillContext(
     }
   }
 
+  const existing = fingerprint.existingConfigs;
+  if (existing.includableDocContents?.length) {
+    parts.push('\nDocumentation File Contents:');
+    for (const doc of existing.includableDocContents) {
+      parts.push(`\n[${doc.path}]\n${doc.content.slice(0, 2000)}`);
+    }
+  }
+
   return parts.join('\n');
 }
 
@@ -935,6 +943,13 @@ export function buildGeneratePrompt(
     parts.push('These files exist and can be referenced in CLAUDE.md using @./path:');
     for (const doc of existing.includableDocs) {
       parts.push(`- ${doc}`);
+    }
+  }
+
+  if (existing.includableDocContents?.length) {
+    parts.push('\n--- Documentation File Contents ---');
+    for (const doc of existing.includableDocContents) {
+      parts.push(`\n[${doc.path}]\n${truncate(doc.content, 4000)}`);
     }
   }
 

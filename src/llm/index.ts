@@ -7,6 +7,11 @@ import { MiniMaxProvider } from './minimax.js';
 import { CursorAcpProvider, isCursorAgentAvailable, isCursorLoggedIn } from './cursor-acp.js';
 import { ClaudeCliProvider, isClaudeCliAvailable, isClaudeCliLoggedIn } from './claude-cli.js';
 import { OpenCodeProvider, isOpenCodeAvailable, isOpenCodeLoggedIn } from './opencode.js';
+import {
+  AntigravityProvider,
+  isAntigravityAvailable,
+  isAntigravityLoggedIn,
+} from './antigravity.js';
 import { parseJsonResponse, extractJson, estimateTokens } from './utils.js';
 import { isModelNotAvailableError, handleModelNotAvailable } from './model-recovery.js';
 import { isRateLimitError } from './seat-based-errors.js';
@@ -73,6 +78,19 @@ function createProvider(config: LLMConfig): LLMProvider {
       }
       return new OpenCodeProvider(config);
     }
+    case 'antigravity': {
+      if (!isAntigravityAvailable()) {
+        throw new Error(
+          'Antigravity provider requires the Antigravity CLI. Install it and ensure it is on your PATH. Alternatively set ANTHROPIC_API_KEY or choose another provider.',
+        );
+      }
+      if (!isAntigravityLoggedIn()) {
+        throw new Error(
+          'Antigravity CLI is installed but not logged in. Run `antigravity auth login` in your terminal to authenticate, then retry.',
+        );
+      }
+      return new AntigravityProvider(config);
+    }
 
     default:
       throw new Error(`Unknown provider: ${config.provider}`);
@@ -85,7 +103,7 @@ export function getProvider(): LLMProvider {
   const config = loadConfig();
   if (!config) {
     throw new Error(
-      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, or OpenCode; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1.`,
+      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, OpenCode, or Antigravity; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1 / AGENTIC_SETUP_USE_ANTIGRAVITY=1.`,
     );
   }
 
@@ -100,7 +118,7 @@ export function getConfig(): LLMConfig {
   const config = loadConfig();
   if (!config) {
     throw new Error(
-      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, or OpenCode; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1.`,
+      `No LLM provider configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, MINIMAX_API_KEY, or VERTEX_PROJECT_ID; or run \`${displayProductName()} config\` and choose Cursor, Claude Code, OpenCode, or Antigravity; or set AGENTIC_SETUP_USE_CURSOR_SEAT=1 / AGENTIC_SETUP_USE_CLAUDE_CLI=1 / AGENTIC_SETUP_USE_OPENCODE=1 / AGENTIC_SETUP_USE_ANTIGRAVITY=1.`,
     );
   }
 
