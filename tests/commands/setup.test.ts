@@ -99,6 +99,13 @@ describe('setupCommand', () => {
     );
   });
 
+  it('propagates dangerouslySkipPermissions to initCommand', async () => {
+    await setupCommand({ autoApprove: true, agent: ['claude'], dangerouslySkipPermissions: true });
+    expect(mocks.initCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ dangerouslySkipPermissions: true }),
+    );
+  });
+
   it('skip-llm skips init but still runs hooks and extensions', async () => {
     writeProjectConfig({
       version: 1,

@@ -61,9 +61,10 @@ Extensions cover Codegraph indexing, lint, security scans, and test coverage rat
 | `cursor_mdc_rules` | 3 | At least one `.cursor/rules/*.mdc` | Cursor |
 | `mcp_servers` | 3 | MCP servers in `.mcp.json`, `.cursor/mcp.json`, or Claude settings | All (optional — see below) |
 | `cross_platform_parity` | 2 | Both Claude and Cursor configs present | Claude + Cursor |
-| `codex_agents_md_exists` | 6 | `AGENTS.md` at repo root | Codex / OpenCode |
+| `codex_agents_md_exists` | 6 | `AGENTS.md` at repo root | Codex / OpenCode / Antigravity |
 | `copilot_instructions_exists` | 6 | `.github/copilot-instructions.md` **or** `.github/instructions/*.md` | GitHub Copilot |
 | `opencode_config_exists` | 6 | `.opencode/` directory present | OpenCode |
+| `antigravity_config_exists` | 6 | `.gemini/` directory present | Antigravity IDE |
 
 ### Quality
 
@@ -120,11 +121,12 @@ When you run `agentic-setup score --agent claude,cursor`, only checks relevant t
 
 - **Claude-only** — `claude_md_exists`, `claude_rules_exist`, `claude_md_freshness`
 - **Cursor-only** — `cursor_rules_exist`, `cursor_mdc_rules`
-- **Codex-only** — `codex_agents_md_exists` (also applies when OpenCode is a target)
+- **Codex-only** — `codex_agents_md_exists` (also applies when OpenCode or Antigravity is a target)
 - **OpenCode-only** — `opencode_config_exists`
+- **Antigravity-only** — `antigravity_config_exists`
 - **Copilot-only** — `copilot_instructions_exists`
 - **Both-only** — `cross_platform_parity`, `no_duplicate_content` (requires Claude + Cursor)
-- **Non-Codex** — `agents_md_exists` bonus excluded for Codex and OpenCode targets
+- **Non-Codex** — `agents_md_exists` bonus excluded for Codex, OpenCode, and Antigravity targets
 
 Auto-detection uses files on disk if `--agent` is omitted.
 

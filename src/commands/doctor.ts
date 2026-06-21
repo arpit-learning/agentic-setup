@@ -156,8 +156,8 @@ export function collectDoctorChecks(repoRoot: string): DoctorCheck[] {
   );
 
   add(
-    'codegraph-mcp-server.js exists',
-    fs.existsSync(path.join(repoRoot, '.agentic-setup', 'codegraph-mcp-server.js')),
+    'codegraph-mcp-server.cjs exists',
+    fs.existsSync(path.join(repoRoot, '.agentic-setup', 'codegraph-mcp-server.cjs')),
     false,
   );
 

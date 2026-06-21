@@ -1,8 +1,12 @@
 {
   "servers": {
     "codegraph": {
-      "command": "node",
-      "args": ["${workspaceFolder}/.agentic-setup/codegraph-mcp-server.js"]
+      "command": "/Users/arpit.malik/.nvm/versions/node/v22.22.2/bin/agentic-setup",
+      "args": [
+        "codegraph",
+        "serve",
+        "${workspaceFolder}"
+      ]
     }
   }
 }

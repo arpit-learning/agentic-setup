@@ -5,12 +5,14 @@ export type ProviderType =
   | 'minimax'
   | 'cursor'
   | 'claude-cli'
-  | 'opencode';
+  | 'opencode'
+  | 'antigravity';
 
 const SEAT_BASED_PROVIDERS: ReadonlySet<ProviderType> = new Set([
   'cursor',
   'claude-cli',
   'opencode',
+  'antigravity',
 ]);
 
 export function isSeatBased(provider: ProviderType | string): boolean {

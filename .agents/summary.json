@@ -1,0 +1,38 @@
+{
+  "name": "@arpit-pm1/agentic-setup",
+  "version": "1.0.0",
+  "description": "",
+  "languages": [
+    "TypeScript",
+    "Markdown",
+    "JSON",
+    "YAML",
+    "Shell",
+    "JavaScript"
+  ],
+  "frameworks": [
+    "Vitest",
+    "ESLint",
+    "Prettier",
+    "Release-it",
+    "Husky",
+    "tsdown"
+  ],
+  "tools": [
+    "npm",
+    "GitHub Actions",
+    "Claude",
+    "Cursor",
+    "Anthropic Claude API",
+    "Google Vertex AI",
+    "OpenAI API"
+  ],
+  "topLevelDirs": [],
+  "conventions": "# agentic-setup\n\n## What Is This\n`agentic-setup` — CLI that keeps AI agent configs in sync with your codebase across Claude Code, Cursor, Codex, OpenCode, and GitHub Copilot.\n\n## Commands\n```bash\nnpm run build\nnpm run dev\nnpm run test\n```\n\nTo run linter:\n```bash\nnpm run lint\n```\n\nTo run type checks:\n```bash\nnpx tsc --noEmit\n```\n\n## Architecture\n**Entry**: `src/bin.ts` → `src/cli.ts`\n**Commands** (`src/commands/`): `init.ts` · `score.ts` · `refresh.ts` · `regenerate.ts` · `config.ts` · `hooks.ts` · `insights.ts` · `learn.ts` · `recommend.ts` · `sources.ts` · `publish.ts` · `undo.ts` · `status.ts` · `uninstall.ts` · `doctor.ts` · `codegraph.ts` · `analyze.ts` · `composite-score.ts`\n**LLM** (`src/llm/`): `anthropic.ts` · `vertex.ts` · `openai-compat.ts` · `cursor-acp.ts` · `claude-cli.ts` · `antigravity.ts` · `minimax.ts` · `types.ts` · `config.ts`\n**AI** (`src/ai/`): `generate.ts` · `refine.ts` · `refresh.ts` · `detect.ts` · `learn.ts` · `score-refine.ts`\n**Fingerprint** (`src/fingerprint/`): `index.ts` · `file-tree.ts` · `code-analysis.ts` · `existing-config.ts` · `sources.ts` · `git.ts`\n**Scoring** (`src/scoring/`): `index.ts` · `display.ts` · `constants.ts` · Checks (`src/scoring/checks/`): `existence.ts` · `quality.ts` · `grounding.ts` · `accuracy.ts` · `freshness.ts` · `bonus.ts` · `sources.ts`\n**Writers** (`src/writers/`): `index.ts` · `claude/index.ts` · `cursor/index.ts` · `codex/index.ts` · `opencode/index.ts` · `github-copilot/index.ts` · `refresh.ts` · `staging.ts` · `backup.ts`\n**MCP**: uses `codegraph` MCP server configured in `.agents/codegraph.json`\n**Workspace Tooling**: `.vscode/` (contains: mcp.json), `.idea/` (contains: mcp.json), `.windsurf/` (contains: mcp.json), and `.devin/` (contains: mcp.json) configures workspace details.\n**Hooks & CLI Settings**: Git hooks managed under `.husky/` (contains: _, pre-commit) and global options in `.gemini/` (contains: config).\n**Docs & Automation**: Scoring guides in `docs/` (contains: SCORING.md) and repositor",
+  "commands": {
+    "test": "npm run test",
+    "build": "npm run build",
+    "dev": "npm run dev",
+    "lint": "npm run lint"
+  }
+}

@@ -131,7 +131,7 @@ ${OUTPUT_FORMAT}
 
 AgentSetup schema:
 {
-  "targetAgent": ["claude", "cursor", "codex", "opencode", "github-copilot"] (array of selected agents),
+  "targetAgent": ["claude", "cursor", "codex", "opencode", "github-copilot", "antigravity"] (array of selected agents),
   "fileDescriptions": {
     "<file-path>": "reason for this change (max 80 chars)"
   },
@@ -154,10 +154,13 @@ AgentSetup schema:
   "copilot": {
     "instructions": "string (markdown content for .github/copilot-instructions.md — same quality/structure as CLAUDE.md)",
     "instructionFiles": [{ "filename": "string.instructions.md", "content": "string (with applyTo YAML frontmatter, e.g. ---\\napplyTo: \\"**/*.ts,**/*.tsx\\"\\n---\\n\\nInstructions here)" }]
+  },
+  "antigravity": {
+    "agentsMd": "string (markdown content for AGENTS.md — reuse codex.agentsMd if available)"
   }
 }
 
-NOTE: If both "codex" and "opencode" are targeted, set opencode.agentsMd to the SAME content as codex.agentsMd — both agents read the same AGENTS.md file.
+NOTE: If multiple agents relying on AGENTS.md (codex, opencode, antigravity) are targeted, set their agentsMd to the SAME content — they all read the same AGENTS.md file.
 
 ${CLAUDE_RULES_FORMAT}
 

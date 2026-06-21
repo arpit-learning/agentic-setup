@@ -14,6 +14,7 @@ import {
   resetClaudeCliLoginCache,
 } from './claude-cli.js';
 import { isOpenCodeAvailable, isOpenCodeLoggedIn, resetOpenCodeLoginCache } from './opencode.js';
+import { isAntigravityAvailable, isAntigravityLoggedIn } from './antigravity.js';
 
 export interface ValidationError {
   ok: false;
@@ -454,6 +455,52 @@ Or choose a different provider:
 }
 
 /**
+ * Validate Antigravity CLI (agy) availability and login status.
+ * No GCP Project ID required — agy authenticates via the Google account / IDE session.
+ * Runtime errors are caught and surfaced via the seat-based error parser.
+ */
+function validateAntigravityCli(): ValidationResult {
+  if (!isAntigravityAvailable()) {
+    return {
+      ok: false,
+      provider: 'antigravity',
+      error: 'Antigravity CLI (agy) Not Installed',
+      detail: `The Antigravity CLI (agy) is not installed or not found on PATH.
+
+To fix:
+1. Install agy: https://goo.gle/agy
+2. Run \`agy\` once to authenticate with your Google account.
+3. Then retry: agentic-setup init`,
+      recoveryOptions: [
+        { label: 'Retry detection', action: 'fix-now' },
+        { label: 'Switch provider', action: 'switch-provider' },
+        { label: 'Skip detection', action: 'skip' },
+      ],
+    };
+  }
+
+  if (!isAntigravityLoggedIn()) {
+    return {
+      ok: false,
+      provider: 'antigravity',
+      error: 'Antigravity CLI Not Authenticated',
+      detail: `Antigravity CLI (agy) is installed but not authenticated.
+
+To fix:
+1. Run \`agy\` once and sign in with your Google account.
+2. Then retry: agentic-setup init`,
+      recoveryOptions: [
+        { label: 'Retry detection', action: 'fix-now' },
+        { label: 'Switch provider', action: 'switch-provider' },
+        { label: 'Skip detection', action: 'skip' },
+      ],
+    };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Main pre-flight validation entry point.
  * Loads config and validates the active provider.
  * Returns { ok: true } if validation passes, or a detailed error with recovery options.
@@ -490,7 +537,10 @@ Available options:
    claude
    agentic-setup init
 
-6. Or run the interactive setup:
+6. Use Antigravity (installed locally):
+   agentic-setup init
+
+7. Or run the interactive setup:
    agentic-setup config`,
       recoveryOptions: [
         { label: 'Setup provider', action: 'fix-now' },
@@ -515,6 +565,8 @@ Available options:
       return validateClaudeCodeCli();
     case 'opencode':
       return validateOpenCodeCli();
+    case 'antigravity':
+      return validateAntigravityCli();
     default:
       return {
         ok: false,

@@ -97,6 +97,7 @@ interface InitOptions {
   autoApprove?: boolean;
   verbose?: boolean;
   thorough?: boolean;
+  dangerouslySkipPermissions?: boolean;
 }
 
 /**
@@ -196,6 +197,26 @@ export async function initCommand(options: InitOptions) {
       config = autoConfig;
     }
   }
+
+  // If a config exists, confirm it if we're not auto-approving
+  if (config && !options.autoApprove) {
+    const displayModel = getDisplayModel(config);
+    const useExisting = await confirm({
+      message: `Use ${config.provider} (${displayModel}) as your LLM provider?`,
+      default: true,
+    });
+    if (!useExisting) {
+      await runInteractiveProviderSetup({
+        selectMessage: 'How do you want to use agentic-setup? (choose LLM provider)',
+      });
+      config = loadConfig();
+      if (!config) {
+        console.log(chalk.red('  Configuration cancelled or failed.\n'));
+        throw new Error('__exit__');
+      }
+    }
+  }
+
   if (!config && !options.autoApprove) {
     // Try seat-based auto-detection
     if (isClaudeCliAvailable() && isClaudeCliLoggedIn()) {
@@ -267,7 +288,15 @@ export async function initCommand(options: InitOptions) {
   let targetAgent: TargetAgent;
   const agentAutoDetected = !options.agent;
   if (options.agent) {
-    targetAgent = options.agent;
+    if (!options.autoApprove) {
+      const useProvided = await confirm({
+        message: `Generate configs for these agents: ${options.agent.join(', ')}?`,
+        default: true,
+      });
+      targetAgent = useProvided ? options.agent : await promptAgent();
+    } else {
+      targetAgent = options.agent;
+    }
   } else {
     const detected = detectAgents(process.cwd());
     if (detected.length > 0 && (options.autoApprove || firstRun)) {
@@ -755,7 +784,7 @@ export async function initCommand(options: InitOptions) {
     console.log(chalk.red('  Failed to generate config.'));
     writeErrorLog(config, rawOutput, undefined, genStopReason);
     if (rawOutput) {
-      console.log(chalk.dim('\nRaw LLM output (JSON parse failed):'));
+      console.log(chalk.dim('\nRaw LLM output (parse failed):'));
       console.log(chalk.dim(rawOutput.slice(0, 500)));
     }
     throw new Error('__exit__');
@@ -902,7 +931,7 @@ export async function initCommand(options: InitOptions) {
     throw new Error('__exit__');
   }
 
-  if (fingerprint) ensurePermissions(fingerprint);
+  if (fingerprint && !options.dangerouslySkipPermissions) ensurePermissions(fingerprint);
 
   const sha = getCurrentHeadSha();
   writeState({

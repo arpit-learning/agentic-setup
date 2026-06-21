@@ -33,6 +33,7 @@ const KNOWN_MODELS: Record<ProviderType, string[]> = {
   cursor: ['auto', 'composer-2', 'composer-2-fast', 'claude-4.6-sonnet-medium'],
   'claude-cli': [],
   opencode: [],
+  antigravity: [],
 };
 
 /**

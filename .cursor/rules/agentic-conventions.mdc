@@ -2,13 +2,8 @@
 description: agentic-setup project conventions for TypeScript CLI development
 alwaysApply: true
 ---
-
-- ESM imports with `.js` extensions (even for `.ts` sources)
-- `unknown` over `any` — ESLint warns on explicit any
-- Tests in `tests/` mirroring `src/` layout, global setup in `tests/setup.ts`
-- Conventional commits: `feat:`, `fix:`, `refactor:`, `chore:`
-- No hardcoded file→language mappings — detection is LLM-driven via `src/ai/detect.ts`
-- `collectFingerprint()` in `src/fingerprint/index.ts` is async with internal LLM enrichment
-- Constants in `src/constants.ts` and `src/scoring/constants.ts`
-- `resolveCliBinary()` from `src/lib/resolve-cli.ts` for CLI binary path resolution
-- Dev branch: `next` · Stable: `master` · Node >= 20
+- ESM imports require `.js` extensions.
+- `unknown` over `any` — ESLint warns on explicit any.
+- Tests mirror `src/` layout, global setup in `tests/setup.ts`.
+- Run tests: `npm run test` or `npx vitest run tests/scoring/accuracy.test.ts`.
+- Conventional commits: `feat:`, `fix:`, `refactor:`.

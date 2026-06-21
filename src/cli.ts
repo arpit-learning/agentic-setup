@@ -38,6 +38,9 @@ import { ciInitCommand } from './commands/ci.js';
 import { setTelemetryDisabled } from './telemetry/config.js';
 import { initTelemetry, trackEvent } from './telemetry/index.js';
 import { checkPendingNotifications } from './lib/notifications.js';
+import { enableDebugMode, isDebugMode } from './lib/debug.js';
+
+import { SUPPORTED_TARGET_AGENTS, type SupportedTargetAgent } from './constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf-8'));
@@ -52,7 +55,12 @@ program
     'Make any repository agentic-ready — AI context sync, Codegraph analysis, and readiness scoring',
   )
   .version(displayVersion)
-  .option('--no-traces', 'Disable anonymous telemetry for this run');
+  .option('--no-traces', 'Disable anonymous telemetry for this run')
+  .option('-d, --debug', 'Enable verbose debug output (or set AGENTIC_SETUP_DEBUG=1)')
+  .option(
+    '--print-timeout <duration>',
+    'Set the --print-timeout duration for the Antigravity provider (e.g. 10m)',
+  );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function tracked<T extends (...args: any[]) => any>(commandName: string, handler: T): T {
@@ -97,7 +105,20 @@ program.hook('preAction', (thisCommand) => {
   if (opts.traces === false) {
     setTelemetryDisabled(true);
   }
+  if (opts.debug) {
+    enableDebugMode();
+  }
+  if (opts.printTimeout) {
+    process.env.AGENTIC_SETUP_ANTIGRAVITY_PRINT_TIMEOUT = opts.printTimeout;
+  }
   initTelemetry();
+
+  if (isDebugMode()) {
+    const args = thisCommand.args.join(' ');
+    const cmd = thisCommand.name();
+
+    console.error(`\n  [debug] command=${cmd}${args ? ' args=' + args : ''} pid=${process.pid}\n`);
+  }
 
   // Show pending learning notifications (skip for learn subcommands to avoid recursion)
   const cmdName = thisCommand.name();
@@ -106,18 +127,16 @@ program.hook('preAction', (thisCommand) => {
   }
 });
 
-function parseAgentOption(
-  value: string,
-): ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[] {
+function parseAgentOption(value: string): SupportedTargetAgent[] {
   if (value === 'both') return ['claude', 'cursor'];
-  if (value === 'all') return ['claude', 'cursor', 'codex', 'opencode', 'github-copilot'];
-  const valid = ['claude', 'cursor', 'codex', 'opencode', 'github-copilot'];
+  if (value === 'all') return [...SUPPORTED_TARGET_AGENTS];
+  const valid = SUPPORTED_TARGET_AGENTS;
   const agents = [
     ...new Set(
       value
         .split(',')
         .map((s) => s.trim().toLowerCase())
-        .filter((a) => valid.includes(a)),
+        .filter((a) => (valid as readonly string[]).includes(a)),
     ),
   ];
   if (agents.length === 0) {
@@ -125,10 +144,10 @@ function parseAgentOption(
     // process.exit() bypasses the Node event loop teardown, leaving the PostHog
     // client mid-flight on Windows + Node 25 (libuv UV_HANDLE_CLOSING crash).
     throw new Error(
-      `Invalid agent "${value}". Choose from: claude, cursor, codex, opencode, github-copilot (comma-separated for multiple)`,
+      `Invalid agent "${value}". Choose from: ${SUPPORTED_TARGET_AGENTS.join(', ')} (comma-separated for multiple)`,
     );
   }
-  return agents as ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[];
+  return agents as SupportedTargetAgent[];
 }
 
 program
@@ -147,6 +166,10 @@ program
   .option('--auto-approve', 'Run without interactive prompts (auto-accept all)')
   .option('--verbose', 'Show detailed logs of each step')
   .option('--thorough', 'Deep analysis — more refinement passes for maximum quality')
+  .option(
+    '--dangerously-skip-permissions',
+    'Skip automatic writing/setup of agent execution permissions',
+  )
   .action(tracked('init', initCommand));
 
 program
@@ -162,6 +185,10 @@ program
   .option('--skip-llm', 'Skip LLM init (infrastructure only)')
   .option('--json', 'Output JSON summary')
   .option('--auto-approve', 'Run init without interactive prompts')
+  .option(
+    '--dangerously-skip-permissions',
+    'Skip automatic writing/setup of agent execution permissions',
+  )
   .action(tracked('setup', setupCommand));
 
 program

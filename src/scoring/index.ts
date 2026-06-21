@@ -13,13 +13,21 @@ import {
   CLAUDE_ONLY_CHECKS,
   CODEX_ONLY_CHECKS,
   OPENCODE_ONLY_CHECKS,
+  ANTIGRAVITY_ONLY_CHECKS,
   COPILOT_ONLY_CHECKS,
   BOTH_ONLY_CHECKS,
   NON_CODEX_CHECKS,
 } from './constants.js';
 import { getDismissedIds } from './dismissed.js';
 
-export type TargetAgent = ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[];
+export type TargetAgent = (
+  | 'claude'
+  | 'cursor'
+  | 'codex'
+  | 'opencode'
+  | 'github-copilot'
+  | 'antigravity'
+)[];
 export type CheckCategory =
   | 'existence'
   | 'quality'
@@ -80,19 +88,26 @@ function filterChecksForTarget(checks: Check[], target: TargetAgent): Check[] {
   return checks.filter((c) => {
     if (CLAUDE_ONLY_CHECKS.has(c.id)) return target.includes('claude');
     if (CURSOR_ONLY_CHECKS.has(c.id)) return target.includes('cursor');
-    if (CODEX_ONLY_CHECKS.has(c.id)) return target.includes('codex') || target.includes('opencode');
+    if (CODEX_ONLY_CHECKS.has(c.id))
+      return (
+        target.includes('codex') || target.includes('opencode') || target.includes('antigravity')
+      );
     if (OPENCODE_ONLY_CHECKS.has(c.id)) return target.includes('opencode');
+    if (ANTIGRAVITY_ONLY_CHECKS.has(c.id)) return target.includes('antigravity');
     if (COPILOT_ONLY_CHECKS.has(c.id)) return target.includes('github-copilot');
     if (BOTH_ONLY_CHECKS.has(c.id)) return target.includes('claude') && target.includes('cursor');
     if (NON_CODEX_CHECKS.has(c.id))
-      return !target.includes('codex') && !target.includes('opencode');
+      return (
+        !target.includes('codex') && !target.includes('opencode') && !target.includes('antigravity')
+      );
     return true;
   });
 }
 
 /** Auto-detect target agent from existing config files on disk. */
 export function detectTargetAgent(dir: string): TargetAgent {
-  const agents: ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[] = [];
+  const agents: ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot' | 'antigravity')[] =
+    [];
 
   if (existsSync(join(dir, 'CLAUDE.md')) || existsSync(join(dir, '.claude', 'skills')))
     agents.push('claude');
@@ -110,6 +125,7 @@ export function detectTargetAgent(dir: string): TargetAgent {
     existsSync(join(dir, '.github', 'instructions'))
   )
     agents.push('github-copilot');
+  if (existsSync(join(dir, '.gemini'))) agents.push('antigravity');
 
   return agents.length > 0 ? agents : ['claude'];
 }

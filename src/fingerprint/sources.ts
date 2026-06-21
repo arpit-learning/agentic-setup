@@ -189,7 +189,10 @@ function collectSourceSummary(resolved: ResolvedSource, projectDir: string): Sou
   }
 
   // Check for published summary.json
-  const summaryPath = path.join(absPath, '.agentic-setup', 'summary.json');
+  let summaryPath = path.join(absPath, '.agents', 'summary.json');
+  if (!fs.existsSync(summaryPath)) {
+    summaryPath = path.join(absPath, '.agentic-setup', 'summary.json');
+  }
   const summaryContent = readFileOrNull(summaryPath);
   if (summaryContent) {
     try {

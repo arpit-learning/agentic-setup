@@ -11,6 +11,7 @@ import {
 } from '../llm/cursor-acp.js';
 import { isClaudeCliAvailable, isClaudeCliLoggedIn } from '../llm/claude-cli.js';
 import { isOpenCodeAvailable, isOpenCodeLoggedIn } from '../llm/opencode.js';
+import { isAntigravityAvailable } from '../llm/antigravity.js';
 import { promptInput } from '../utils/prompt.js';
 
 const IS_WINDOWS = process.platform === 'win32';
@@ -19,6 +20,7 @@ const PROVIDER_CHOICES: Array<{ name: string; value: ProviderType }> = [
   { name: 'Claude Code — use your existing subscription (no API key)', value: 'claude-cli' },
   { name: 'OpenCode — use your existing subscription (no API key)', value: 'opencode' },
   { name: 'Cursor — use your existing subscription (no API key)', value: 'cursor' },
+  { name: 'Antigravity — use your existing subscription (no API key)', value: 'antigravity' },
   { name: 'Anthropic — API key from console.anthropic.com', value: 'anthropic' },
   { name: 'Google Vertex AI — Claude models via GCP', value: 'vertex' },
   { name: 'OpenAI — or any OpenAI-compatible endpoint', value: 'openai' },
@@ -97,6 +99,48 @@ export async function runInteractiveProviderSetup(options?: {
       config.model =
         (await promptInput(`Model (default: ${DEFAULT_MODELS.opencode}):`)) ||
         DEFAULT_MODELS.opencode;
+      break;
+    }
+    case 'antigravity': {
+      if (!isAntigravityAvailable()) {
+        console.log(chalk.yellow('\n  Antigravity CLI (agy) not found on PATH.'));
+        console.log(chalk.dim('  Install it: ') + chalk.hex('#83D1EB')('https://goo.gle/agy'));
+        console.log(
+          chalk.dim('  After install, run ') +
+            chalk.hex('#83D1EB')('agy') +
+            chalk.dim(' once to authenticate via your Google account.\n'),
+        );
+        const proceed = await confirm({ message: 'Continue anyway?' });
+        if (!proceed) throw new Error('__exit__');
+      }
+
+      const defaultProject =
+        process.env.ANTIGRAVITY_PROJECT_ID ||
+        process.env.VERTEX_PROJECT_ID ||
+        process.env.GCP_PROJECT_ID ||
+        '';
+      config.vertexProjectId =
+        (await promptInput(`Antigravity/GCP Project ID (default: ${defaultProject || 'none'}):`)) ||
+        defaultProject ||
+        undefined;
+
+      const modelChoice = await select<string>({
+        message: 'Select model',
+        choices: [
+          { name: 'default (Default IDE Model)', value: 'default' },
+          { name: 'pro (Gemini Pro)', value: 'pro' },
+          { name: 'flash (Gemini Flash)', value: 'flash' },
+          { name: 'flash_lite (Gemini Flash Lite)', value: 'flash_lite' },
+          { name: 'Custom model name...', value: 'custom' },
+        ],
+        default: 'default',
+      });
+
+      if (modelChoice === 'custom') {
+        config.model = (await promptInput('Model name (e.g. gemini-2.5-pro):')) || 'default';
+      } else {
+        config.model = modelChoice;
+      }
       break;
     }
     case 'cursor': {

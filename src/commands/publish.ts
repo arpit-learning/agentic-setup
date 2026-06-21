@@ -62,7 +62,7 @@ export async function publishCommand() {
       /* skip */
     }
 
-    const outputDir = path.join(dir, '.agentic-setup');
+    const outputDir = path.join(dir, '.agents');
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }

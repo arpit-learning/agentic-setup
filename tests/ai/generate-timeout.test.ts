@@ -680,7 +680,7 @@ describe('buildDiagnostic', () => {
 
   it('reports non-JSON output with preview', () => {
     const msg = buildDiagnostic(undefined, 'This is plain text, not JSON', 30);
-    expect(msg).toContain('not valid JSON');
+    expect(msg).toContain('did not output any valid JSON');
     expect(msg).toContain('This is plain text');
   });
 

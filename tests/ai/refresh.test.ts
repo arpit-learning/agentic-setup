@@ -153,6 +153,16 @@ describe('refreshDocs', () => {
     expect(prompt).toContain('CONTRIBUTING.md');
   });
 
+  it('includes inlined doc contents in refresh prompt', async () => {
+    const prompt = await getRefreshPrompt({
+      includableDocs: ['ARCHITECTURE.md'],
+      includableDocContents: [{ path: 'ARCHITECTURE.md', content: '# Architecture Content' }],
+    });
+    expect(prompt).toContain('Documentation File Contents');
+    expect(prompt).toContain('[ARCHITECTURE.md]');
+    expect(prompt).toContain('# Architecture Content');
+  });
+
   it('omits empty diff sections', async () => {
     mockedLlmCall.mockResolvedValue('{}');
     mockedParseJson.mockReturnValue({

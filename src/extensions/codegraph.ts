@@ -34,7 +34,7 @@ const DEFAULT_EXCLUDES = [
 
 export const CODEGRAPH_MCP_SERVER = {
   command: 'node',
-  args: ['${workspaceFolder}/.agentic-setup/codegraph-mcp-server.js'],
+  args: ['${workspaceFolder}/.agentic-setup/codegraph-mcp-server.cjs'],
 };
 
 export function getExcludePatterns(): string[] {
@@ -525,10 +525,11 @@ export function mergeCodegraphMcp(repoRoot: string, dryRun = false): boolean {
     { path: '.devin/mcp.json', key: 'mcpServers' },
     { path: '.codex/mcp.json', key: 'mcpServers' },
     { path: '.idea/mcp.json', key: 'mcpServers' },
+    { path: path.join(os.homedir(), '.gemini', 'config', 'mcp_config.json'), key: 'mcpServers' },
   ];
 
   for (const config of ideConfigs) {
-    const mcpPath = path.join(repoRoot, config.path);
+    const mcpPath = path.isAbsolute(config.path) ? config.path : path.join(repoRoot, config.path);
     if (!fs.existsSync(path.dirname(mcpPath))) {
       fs.mkdirSync(path.dirname(mcpPath), { recursive: true });
     }
@@ -550,6 +551,15 @@ export function mergeCodegraphMcp(repoRoot: string, dryRun = false): boolean {
         fs.writeFileSync(mcpPath, JSON.stringify(existing, null, 2));
       }
       added = true;
+    } else {
+      const currentArgs = (servers.codegraph as any).args || [];
+      if (currentArgs.some((arg: string) => arg.includes('codegraph-mcp-server.js'))) {
+        servers.codegraph = mcpServerConfig;
+        if (!dryRun) {
+          fs.writeFileSync(mcpPath, JSON.stringify(existing, null, 2));
+        }
+        added = true;
+      }
     }
   }
 
@@ -578,13 +588,15 @@ child.on('exit', (code) => process.exit(code || 0));
 }
 
 export function writeMcpServerScript(repoRoot: string, dryRun = false): string {
-  const scriptPath = path.join(repoRoot, '.agentic-setup', 'codegraph-mcp-server.js');
+  const scriptPath = path.join(repoRoot, '.agentic-setup', 'codegraph-mcp-server.cjs');
   const cliBin = resolveCliBinary();
 
   const content = `#!/usr/bin/env node
-import { spawn } from 'child_process';
+const { spawn } = require('child_process');
+const path = require('path');
 
-const child = spawn('${cliBin}', ['codegraph', 'serve', process.cwd()], {
+const workspaceRoot = path.dirname(__dirname);
+const child = spawn('${cliBin}', ['codegraph', 'serve', workspaceRoot], {
   shell: true,
   stdio: 'inherit'
 });
@@ -604,7 +616,7 @@ export function appendGitignoreEntries(repoRoot: string, dryRun = false): void {
   const content = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
   if (content.includes(marker)) return;
 
-  const block = `\n${marker}\n.codegraph/\ncodegraph.db\n.neo4j/\n.agentic-setup/index-codegraph.js\n.agentic-setup/codegraph-mcp-server.js\n.cursor/mcp.json\n.vscode/mcp.json\n.windsurf/mcp.json\n.devin/mcp.json\n.codex/mcp.json\n.idea/mcp.json\n`;
+  const block = `\n${marker}\n.codegraph/\ncodegraph.db\n.neo4j/\n.agentic-setup/index-codegraph.js\n.agentic-setup/codegraph-mcp-server.cjs\n.cursor/mcp.json\n.vscode/mcp.json\n.windsurf/mcp.json\n.devin/mcp.json\n.codex/mcp.json\n.idea/mcp.json\n`;
   if (!dryRun) {
     fs.writeFileSync(gitignorePath, content + block);
   }
@@ -634,6 +646,7 @@ export function readMcpConfig(repoRoot: string): { valid: boolean; hasCodegraph:
     path.join(repoRoot, '.devin', 'mcp.json'),
     path.join(repoRoot, '.codex', 'mcp.json'),
     path.join(repoRoot, '.idea', 'mcp.json'),
+    path.join(repoRoot, '.antigravity', 'mcp.json'),
   ];
 
   for (const mcpPath of mcpPaths) {
