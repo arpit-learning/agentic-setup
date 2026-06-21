@@ -14,6 +14,7 @@ import {
   resetClaudeCliLoginCache,
 } from './claude-cli.js';
 import { isOpenCodeAvailable, isOpenCodeLoggedIn, resetOpenCodeLoginCache } from './opencode.js';
+import { isAntigravityAvailable, isAntigravityLoggedIn } from './antigravity.js';
 
 export interface ValidationError {
   ok: false;
@@ -454,6 +455,50 @@ Or choose a different provider:
 }
 
 /**
+ * Validate Antigravity CLI availability and login status.
+ */
+function validateAntigravityCli(): ValidationResult {
+  if (!isAntigravityAvailable()) {
+    return {
+      ok: false,
+      provider: 'antigravity',
+      error: 'Antigravity CLI (agentapi) Not Installed',
+      detail: `The Antigravity CLI (agentapi) is not installed or not found on PATH.
+
+To fix:
+1. Please ensure Antigravity IDE is running and its CLI is on your PATH.
+2. Alternatively, run: export ANTHROPIC_API_KEY=sk-ant-<your-key>
+3. Then retry: agentic-setup init`,
+      recoveryOptions: [
+        { label: 'Retry detection', action: 'fix-now' },
+        { label: 'Switch provider', action: 'switch-provider' },
+        { label: 'Skip detection', action: 'skip' },
+      ],
+    };
+  }
+
+  if (!isAntigravityLoggedIn()) {
+    return {
+      ok: false,
+      provider: 'antigravity',
+      error: 'Antigravity CLI Not Authenticated',
+      detail: `Antigravity CLI (agentapi) is installed but not authenticated.
+
+To fix:
+1. Ensure the Antigravity IDE is running and authenticated.
+2. Then retry: agentic-setup init`,
+      recoveryOptions: [
+        { label: 'Retry detection', action: 'fix-now' },
+        { label: 'Switch provider', action: 'switch-provider' },
+        { label: 'Skip detection', action: 'skip' },
+      ],
+    };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Main pre-flight validation entry point.
  * Loads config and validates the active provider.
  * Returns { ok: true } if validation passes, or a detailed error with recovery options.
@@ -490,7 +535,10 @@ Available options:
    claude
    agentic-setup init
 
-6. Or run the interactive setup:
+6. Use Antigravity (installed locally):
+   agentic-setup init
+
+7. Or run the interactive setup:
    agentic-setup config`,
       recoveryOptions: [
         { label: 'Setup provider', action: 'fix-now' },
@@ -515,6 +563,8 @@ Available options:
       return validateClaudeCodeCli();
     case 'opencode':
       return validateOpenCodeCli();
+    case 'antigravity':
+      return validateAntigravityCli();
     default:
       return {
         ok: false,

@@ -1,4 +1,7 @@
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
 import type {
   LLMProvider,
   LLMCallOptions,
@@ -11,19 +14,43 @@ import { trackUsage } from './usage.js';
 import { estimateTokens } from './utils.js';
 import { withAgenticSetupSubprocessEnv } from '../lib/subprocess-sentinel.js';
 
-const ANTIGRAVITY_BIN = 'antigravity';
+const ANTIGRAVITY_BIN = 'agentapi';
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const IS_WINDOWS = process.platform === 'win32';
 
-let cachedLoggedIn: boolean | null = null;
+/** Resolve full path to antigravity CLI binary (agentapi). */
+export function resolveAntigravityBinPath(): string {
+  // 1. Check if it's on PATH
+  try {
+    const cmd = IS_WINDOWS ? 'where agentapi' : 'which agentapi';
+    const pathFromWhich = execSync(cmd, { encoding: 'utf-8' }).trim();
+    const firstPath = pathFromWhich.split('\n')[0].trim();
+    if (firstPath && fs.existsSync(firstPath)) {
+      return firstPath;
+    }
+  } catch {
+    // Not on PATH
+  }
 
-/** Reset the cached login status — used in tests. */
-export function resetAntigravityLoginCache(): void {
-  cachedLoggedIn = null;
+  // 2. Fallback to default installation path
+  const home = os.homedir();
+  const defaultPath = IS_WINDOWS
+    ? path.join(home, '.gemini', 'antigravity-ide', 'bin', 'agentapi.exe')
+    : path.join(home, '.gemini', 'antigravity-ide', 'bin', 'agentapi');
+
+  if (fs.existsSync(defaultPath)) {
+    return defaultPath;
+  }
+
+  return 'agentapi';
 }
 
-/** Whether the antigravity CLI is on PATH (user has installed it and can run `antigravity`). */
+/** Whether the antigravity CLI is on PATH or at the default installation path. */
 export function isAntigravityAvailable(): boolean {
+  const resolved = resolveAntigravityBinPath();
+  if (resolved !== 'agentapi') {
+    return fs.existsSync(resolved);
+  }
   try {
     const cmd = IS_WINDOWS ? `where ${ANTIGRAVITY_BIN}` : `which ${ANTIGRAVITY_BIN}`;
     execSync(cmd, { stdio: 'ignore' });
@@ -33,39 +60,34 @@ export function isAntigravityAvailable(): boolean {
   }
 }
 
-/** Whether the user is logged in to antigravity CLI. Uses `antigravity auth list` for check. Result is cached for the process lifetime. */
+/** Whether the user is logged in to antigravity CLI. Since agentapi uses the IDE session, it is always authenticated. */
 export function isAntigravityLoggedIn(): boolean {
-  if (cachedLoggedIn !== null) return cachedLoggedIn;
-  try {
-    const result = execSync('antigravity auth list', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    // If command succeeds and returns non-empty output, user is logged in
-    cachedLoggedIn = result.toString().trim().length > 0;
-  } catch {
-    // Command failed or not found - treat as not logged in
-    cachedLoggedIn = false;
-  }
-  return cachedLoggedIn;
+  return isAntigravityAvailable();
 }
 
 /**
  * Common spawn helper for Antigravity. Handles Windows vs Unix.
  */
-function spawnAntigravity(args: string[]): ChildProcess {
+function spawnAntigravity(args: string[], config: LLMConfig): ChildProcess {
+  const binPath = resolveAntigravityBinPath();
   const env = withAgenticSetupSubprocessEnv({
     ...process.env,
+    ANTIGRAVITY_PROJECT_ID:
+      config.vertexProjectId ||
+      process.env.ANTIGRAVITY_PROJECT_ID ||
+      process.env.VERTEX_PROJECT_ID ||
+      process.env.GCP_PROJECT_ID ||
+      '',
   });
   if (IS_WINDOWS) {
-    return spawn([ANTIGRAVITY_BIN, ...args].join(' '), {
+    return spawn([binPath, ...args].join(' '), {
       cwd: process.cwd(),
       stdio: ['pipe', 'pipe', 'pipe'] as const,
       env,
       shell: true,
     });
   } else {
-    return spawn(ANTIGRAVITY_BIN, args, {
+    return spawn(binPath, args, {
       cwd: process.cwd(),
       stdio: ['pipe', 'pipe', 'pipe'] as const,
       env,
@@ -77,12 +99,10 @@ function spawnAntigravity(args: string[]): ChildProcess {
  * Run a non-streaming Antigravity command and return the stdout as string.
  * Handles timeout and error parsing.
  */
-function runCommand(args: string[], input: string, timeoutMs: number): Promise<string> {
+function runCommand(args: string[], timeoutMs: number, config: LLMConfig): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawnAntigravity(args);
+    const child = spawnAntigravity(args, config);
     const stderrChunks: Buffer[] = [];
-
-    child.stdin!.end(input);
 
     let stdoutData = Buffer.alloc(0);
     child.stdout!.on('data', (chunk: Buffer) => {
@@ -119,7 +139,7 @@ function runCommand(args: string[], input: string, timeoutMs: number): Promise<s
           : code != null
             ? `Antigravity exited with code ${code}`
             : 'Antigravity exited';
-        const detail = friendly || stderr;
+        const detail = friendly || stderr || stdoutData.toString('utf-8').trim();
         reject(new Error(detail ? `${base}. ${detail}` : base));
       }
     });
@@ -131,17 +151,15 @@ function runCommand(args: string[], input: string, timeoutMs: number): Promise<s
  */
 function runCommandStream(
   args: string[],
-  input: string,
   callbacks: LLMStreamCallbacks,
   timeoutMs: number,
+  config: LLMConfig,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawnAntigravity(args);
+    const child = spawnAntigravity(args, config);
     const stderrChunks: Buffer[] = [];
     let settled = false;
     let lineBuffer = '';
-
-    child.stdin!.end(input);
 
     child.stdout!.on('data', (chunk: Buffer) => {
       const text = chunk.toString('utf-8');
@@ -153,11 +171,26 @@ function runCommandStream(
         if (!line.trim()) continue;
         try {
           const event = JSON.parse(line);
-          if (event.type === 'text' && event.part?.text) {
+          if (event.error) {
+            callbacks.onError(new Error(event.error));
+            return;
+          }
+          if (event.response) {
+            if (typeof event.response.text === 'string') {
+              callbacks.onText(event.response.text);
+            } else if (typeof event.response.content === 'string') {
+              callbacks.onText(event.response.content);
+            } else if (typeof event.response === 'string') {
+              callbacks.onText(event.response);
+            }
+          } else if (event.type === 'text' && event.part?.text) {
             callbacks.onText(event.part.text);
+          } else if (typeof event.text === 'string') {
+            callbacks.onText(event.text);
           }
         } catch {
-          // ignore non-JSON lines
+          // If it's not JSON, treat it as raw text chunk
+          callbacks.onText(line);
         }
       }
     });
@@ -195,11 +228,17 @@ function runCommandStream(
         if (lineBuffer.trim()) {
           try {
             const event = JSON.parse(lineBuffer);
-            if (event.type === 'text' && event.part?.text) {
-              callbacks.onText(event.part.text);
+            if (event.response) {
+              if (typeof event.response.text === 'string') {
+                callbacks.onText(event.response.text);
+              } else if (typeof event.response.content === 'string') {
+                callbacks.onText(event.response.content);
+              }
+            } else if (typeof event.text === 'string') {
+              callbacks.onText(event.text);
             }
           } catch {
-            // ignore
+            callbacks.onText(lineBuffer);
           }
         }
         callbacks.onEnd({ stopReason: 'end_turn' });
@@ -225,8 +264,10 @@ function runCommandStream(
 export class AntigravityProvider implements LLMProvider {
   private defaultModel: string;
   private timeoutMs: number;
+  private config: LLMConfig;
 
   constructor(config: LLMConfig) {
+    this.config = config;
     this.defaultModel = config.model || 'default';
     const envTimeout = process.env.AGENTIC_SETUP_ANTIGRAVITY_TIMEOUT_MS;
     this.timeoutMs = envTimeout ? parseInt(envTimeout, 10) : DEFAULT_TIMEOUT_MS;
@@ -240,13 +281,28 @@ export class AntigravityProvider implements LLMProvider {
     const prompt = options.prompt || '';
     const combined = system + '\n\n' + prompt;
     const model = options.model || this.defaultModel;
-    const args = ['run', '--format', 'json', '--model', model, '--', '-'];
-    const result = await runCommand(args, combined, this.timeoutMs);
-    trackUsage(model, {
-      inputTokens: estimateTokens(combined),
-      outputTokens: estimateTokens(result),
-    });
-    return result;
+    const args = ['new-conversation'];
+    if (model && model !== 'default') {
+      args.push(`--model=${model}`);
+    }
+    args.push(combined);
+    const resultJson = await runCommand(args, this.timeoutMs, this.config);
+    try {
+      const parsed = JSON.parse(resultJson);
+      if (parsed.error) {
+        throw new Error(parsed.error);
+      }
+      if (parsed.response) {
+        if (typeof parsed.response.text === 'string') return parsed.response.text;
+        if (typeof parsed.response.content === 'string') return parsed.response.content;
+        if (typeof parsed.response.message === 'string') return parsed.response.message;
+        if (typeof parsed.response === 'string') return parsed.response;
+        return JSON.stringify(parsed.response);
+      }
+      return resultJson;
+    } catch {
+      return resultJson;
+    }
   }
 
   async stream(options: LLMStreamOptions, callbacks: LLMStreamCallbacks): Promise<void> {
@@ -254,7 +310,11 @@ export class AntigravityProvider implements LLMProvider {
     const prompt = options.prompt || '';
     const combined = system + '\n\n' + prompt;
     const model = options.model || this.defaultModel;
-    const args = ['run', '--format', 'json', '--model', model, '--', '-'];
+    const args = ['new-conversation'];
+    if (model && model !== 'default') {
+      args.push(`--model=${model}`);
+    }
+    args.push(combined);
     const inputEstimate = estimateTokens(combined);
     let outputChars = 0;
     const wrappedCallbacks: LLMStreamCallbacks = {
@@ -271,6 +331,6 @@ export class AntigravityProvider implements LLMProvider {
       },
       onError: (err) => callbacks.onError(err),
     };
-    return runCommandStream(args, combined, wrappedCallbacks, this.timeoutMs);
+    return runCommandStream(args, wrappedCallbacks, this.timeoutMs, this.config);
   }
 }

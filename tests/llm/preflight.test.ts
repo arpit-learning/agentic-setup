@@ -8,12 +8,14 @@ vi.mock('../../src/llm/config.js');
 vi.mock('../../src/llm/cursor-acp.js');
 vi.mock('../../src/llm/claude-cli.js');
 vi.mock('../../src/llm/opencode.js');
+vi.mock('../../src/llm/antigravity.js');
 
 import { validateLlmSetup } from '../../src/llm/preflight.js';
 import * as config from '../../src/llm/config.js';
 import * as cursorAcp from '../../src/llm/cursor-acp.js';
 import * as claudeCli from '../../src/llm/claude-cli.js';
 import * as opencode from '../../src/llm/opencode.js';
+import * as antigravity from '../../src/llm/antigravity.js';
 
 const originalEnv = process.env;
 
@@ -46,6 +48,8 @@ describe('preflight validation', () => {
     vi.mocked(claudeCli.isClaudeCliLoggedIn).mockReturnValue(false);
     vi.mocked(opencode.isOpenCodeAvailable).mockReturnValue(false);
     vi.mocked(opencode.isOpenCodeLoggedIn).mockReturnValue(false);
+    vi.mocked(antigravity.isAntigravityAvailable).mockReturnValue(false);
+    vi.mocked(antigravity.isAntigravityLoggedIn).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -318,6 +322,47 @@ describe('preflight validation', () => {
         });
         vi.mocked(opencode.isOpenCodeAvailable).mockReturnValue(true);
         vi.mocked(opencode.isOpenCodeLoggedIn).mockReturnValue(true);
+
+        const result = validateLlmSetup();
+        expect(result.ok).toBe(true);
+      });
+    });
+
+    describe('Antigravity provider', () => {
+      it('should return error when CLI is not available', () => {
+        vi.mocked(config.loadConfig).mockReturnValue({
+          provider: 'antigravity',
+          model: 'default',
+        });
+        vi.mocked(antigravity.isAntigravityAvailable).mockReturnValue(false);
+
+        const result = validateLlmSetup();
+        expect(result.ok).toBe(false);
+        expect(result.provider).toBe('antigravity');
+        expect(result.error).toContain('Antigravity CLI (agentapi) Not Installed');
+      });
+
+      it('should return error when CLI is not logged in', () => {
+        vi.mocked(config.loadConfig).mockReturnValue({
+          provider: 'antigravity',
+          model: 'default',
+        });
+        vi.mocked(antigravity.isAntigravityAvailable).mockReturnValue(true);
+        vi.mocked(antigravity.isAntigravityLoggedIn).mockReturnValue(false);
+
+        const result = validateLlmSetup();
+        expect(result.ok).toBe(false);
+        expect(result.provider).toBe('antigravity');
+        expect(result.error).toContain('Antigravity CLI Not Authenticated');
+      });
+
+      it('should pass validation when CLI is available and logged in', () => {
+        vi.mocked(config.loadConfig).mockReturnValue({
+          provider: 'antigravity',
+          model: 'default',
+        });
+        vi.mocked(antigravity.isAntigravityAvailable).mockReturnValue(true);
+        vi.mocked(antigravity.isAntigravityLoggedIn).mockReturnValue(true);
 
         const result = validateLlmSetup();
         expect(result.ok).toBe(true);

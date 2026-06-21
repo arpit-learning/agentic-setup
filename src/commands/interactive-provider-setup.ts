@@ -11,7 +11,7 @@ import {
 } from '../llm/cursor-acp.js';
 import { isClaudeCliAvailable, isClaudeCliLoggedIn } from '../llm/claude-cli.js';
 import { isOpenCodeAvailable, isOpenCodeLoggedIn } from '../llm/opencode.js';
-import { isAntigravityAvailable, isAntigravityLoggedIn } from '../llm/antigravity.js';
+import { isAntigravityAvailable } from '../llm/antigravity.js';
 import { promptInput } from '../utils/prompt.js';
 
 const IS_WINDOWS = process.platform === 'win32';
@@ -103,25 +103,28 @@ export async function runInteractiveProviderSetup(options?: {
     }
     case 'antigravity': {
       if (!isAntigravityAvailable()) {
-        console.log(chalk.yellow('\n  Antigravity CLI not found.'));
-        console.log(chalk.dim('  Please install Antigravity CLI and ensure it is on your PATH.'));
-        console.log(
-          chalk.dim('  Then run ') +
-            chalk.hex('#83D1EB')('antigravity auth login') +
-            chalk.dim(' to authenticate.\n'),
-        );
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
-      } else if (!isAntigravityLoggedIn()) {
-        console.log(chalk.yellow('\n  Antigravity CLI found but not logged in.'));
-        console.log(
-          chalk.dim('  Run ') +
-            chalk.hex('#83D1EB')('antigravity auth login') +
-            chalk.dim(' to authenticate.\n'),
-        );
+        console.log(chalk.yellow('\n  Antigravity CLI (agentapi) not found on PATH.'));
+        console.log(chalk.dim('  Please make sure Antigravity IDE is running and on your PATH.'));
         const proceed = await confirm({ message: 'Continue anyway?' });
         if (!proceed) throw new Error('__exit__');
       }
+
+      const defaultProject =
+        process.env.ANTIGRAVITY_PROJECT_ID ||
+        process.env.VERTEX_PROJECT_ID ||
+        process.env.GCP_PROJECT_ID ||
+        '';
+      config.vertexProjectId = await promptInput(
+        `Antigravity/GCP Project ID (default: ${defaultProject || 'none'}):`,
+      );
+      if (!config.vertexProjectId && !defaultProject) {
+        console.log(chalk.red('Project ID is required.'));
+        throw new Error('__exit__');
+      }
+      if (!config.vertexProjectId) {
+        config.vertexProjectId = defaultProject;
+      }
+
       config.model =
         (await promptInput(`Model (default: ${DEFAULT_MODELS.antigravity}):`)) ||
         DEFAULT_MODELS.antigravity;
