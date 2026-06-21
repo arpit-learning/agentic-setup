@@ -27,8 +27,8 @@ export async function analyzeCommand(options: AnalyzeOptions = {}): Promise<void
   let codegraphStats = getCodegraphStats(repoRoot);
 
   if (!options.skipCodegraph && (options.reindex || !codegraphStats.indexed)) {
-    const spinner = ora('Indexing with Codegraph...').start();
-    const result = runCodegraphIndex(repoRoot);
+    const spinner = ora('Indexing with Tree-sitter WASM...').start();
+    const result = await runCodegraphIndex(repoRoot);
     const parsed = parseIndexOutput(result.output);
     codegraphStats = { ...getCodegraphStats(repoRoot), ...parsed };
     if (result.ok) spinner.succeed('Codegraph index complete');

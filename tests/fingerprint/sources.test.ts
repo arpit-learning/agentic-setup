@@ -182,20 +182,37 @@ describe('resolveAllSources', () => {
     expect(result.length).toBeLessThanOrEqual(5);
   });
 
-  it('reads published summary.json when present', () => {
-    fs.mkdirSync(path.join(siblingDir, '.agentic-setup'), { recursive: true });
+  it('reads published summary.json when present under .agents', () => {
+    fs.mkdirSync(path.join(siblingDir, '.agents'), { recursive: true });
     fs.writeFileSync(
-      path.join(siblingDir, '.agentic-setup', 'summary.json'),
+      path.join(siblingDir, '.agents', 'summary.json'),
       JSON.stringify({
-        name: '@org/published',
-        description: 'Published lib',
+        name: '@org/published-agents',
+        description: 'Published lib in .agents',
         topLevelDirs: ['src'],
       }),
     );
     const relativeSibling = path.relative(projectDir, siblingDir);
     const result = resolveAllSources(projectDir, [relativeSibling], []);
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('@org/published');
+    expect(result[0].name).toBe('@org/published-agents');
+    expect(result[0].topLevelDirs).toEqual(['src']);
+  });
+
+  it('reads published summary.json when present under .agentic-setup (fallback)', () => {
+    fs.mkdirSync(path.join(siblingDir, '.agentic-setup'), { recursive: true });
+    fs.writeFileSync(
+      path.join(siblingDir, '.agentic-setup', 'summary.json'),
+      JSON.stringify({
+        name: '@org/published-fallback',
+        description: 'Published lib in fallback',
+        topLevelDirs: ['src'],
+      }),
+    );
+    const relativeSibling = path.relative(projectDir, siblingDir);
+    const result = resolveAllSources(projectDir, [relativeSibling], []);
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('@org/published-fallback');
     expect(result[0].topLevelDirs).toEqual(['src']);
   });
 });

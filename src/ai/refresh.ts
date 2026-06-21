@@ -38,6 +38,7 @@ interface ExistingDocs {
   copilotInstructions?: string;
   copilotInstructionFiles?: Array<{ filename: string; content: string }>;
   includableDocs?: string[];
+  includableDocContents?: Array<{ path: string; content: string }>;
 }
 
 interface ProjectContext {
@@ -220,6 +221,13 @@ function buildRefreshPrompt(
     );
     for (const doc of existingDocs.includableDocs) {
       parts.push(`- ${doc}`);
+    }
+  }
+
+  if (existingDocs.includableDocContents?.length) {
+    parts.push('\n--- Documentation File Contents ---');
+    for (const doc of existingDocs.includableDocContents) {
+      parts.push(`\n[${doc.path}]\n${truncateAtLineEnd(doc.content, 4000)}`);
     }
   }
 

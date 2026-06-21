@@ -44,4 +44,22 @@ describe('cli command registration', () => {
     expect(names).not.toContain('bootstrap');
     expect(names).not.toContain('skills');
   });
+
+  it('registers --print-timeout as a global option', () => {
+    const opt = program.options.find((o) => o.long === '--print-timeout');
+    expect(opt).toBeDefined();
+    expect(opt!.description).toContain('Antigravity provider');
+  });
+
+  it('registers --dangerously-skip-permissions on init command', () => {
+    const cmd = program.commands.find((c) => c.name() === 'init');
+    const opt = cmd!.options.find((o) => o.long === '--dangerously-skip-permissions');
+    expect(opt).toBeDefined();
+  });
+
+  it('registers --dangerously-skip-permissions on setup command', () => {
+    const cmd = program.commands.find((c) => c.name() === 'setup');
+    const opt = cmd!.options.find((o) => o.long === '--dangerously-skip-permissions');
+    expect(opt).toBeDefined();
+  });
 });

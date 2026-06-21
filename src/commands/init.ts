@@ -25,10 +25,12 @@ import {
   DEFAULT_MODELS,
 } from '../llm/config.js';
 import { validateModel } from '../llm/index.js';
+import { validateLlmSetup, type ValidationError } from '../llm/preflight.js';
 import { runInteractiveProviderSetup } from './interactive-provider-setup.js';
 import { isClaudeCliAvailable, isClaudeCliLoggedIn } from '../llm/claude-cli.js';
 import { isCursorAgentAvailable, isCursorLoggedIn } from '../llm/cursor-acp.js';
 import { isOpenCodeAvailable } from '../llm/opencode.js';
+import { formatValidationError } from '../utils/validation-messages.js';
 import confirm from '@inquirer/confirm';
 import { computeLocalScore } from '../scoring/index.js';
 import { displayScoreDelta, displayScoreSummary } from '../scoring/display.js';
@@ -95,6 +97,40 @@ interface InitOptions {
   autoApprove?: boolean;
   verbose?: boolean;
   thorough?: boolean;
+  dangerouslySkipPermissions?: boolean;
+}
+
+/**
+ * Handle a validation error by offering recovery options to the user.
+ * Returns the user's choice: 'fix-now', 'switch-provider', 'skip', or 'exit'.
+ */
+async function handleValidationError(
+  error: ValidationError,
+  options: InitOptions,
+): Promise<'fix-now' | 'switch-provider' | 'skip' | 'exit'> {
+  if (!process.stdin.isTTY || options.autoApprove) {
+    // In non-interactive mode, default to 'skip' to allow init to proceed without LLM
+    return 'skip';
+  }
+
+  const { default: select } = await import('@inquirer/select');
+  const choice = await select({
+    message: 'How would you like to proceed?',
+    choices: error.recoveryOptions.map((opt: (typeof error.recoveryOptions)[number]) => ({
+      name: opt.label,
+      value: opt.action,
+      description:
+        opt.action === 'fix-now'
+          ? 'Run agentic-setup config'
+          : opt.action === 'switch-provider'
+            ? 'Choose a different provider'
+            : opt.action === 'skip'
+              ? 'Proceed with file analysis only'
+              : 'Exit and abort setup',
+    })),
+  });
+
+  return choice as 'fix-now' | 'switch-provider' | 'skip' | 'exit';
 }
 
 function log(verbose: boolean | undefined, ...args: unknown[]): void {
@@ -161,6 +197,26 @@ export async function initCommand(options: InitOptions) {
       config = autoConfig;
     }
   }
+
+  // If a config exists, confirm it if we're not auto-approving
+  if (config && !options.autoApprove) {
+    const displayModel = getDisplayModel(config);
+    const useExisting = await confirm({
+      message: `Use ${config.provider} (${displayModel}) as your LLM provider?`,
+      default: true,
+    });
+    if (!useExisting) {
+      await runInteractiveProviderSetup({
+        selectMessage: 'How do you want to use agentic-setup? (choose LLM provider)',
+      });
+      config = loadConfig();
+      if (!config) {
+        console.log(chalk.red('  Configuration cancelled or failed.\n'));
+        throw new Error('__exit__');
+      }
+    }
+  }
+
   if (!config && !options.autoApprove) {
     // Try seat-based auto-detection
     if (isClaudeCliAvailable() && isClaudeCliLoggedIn()) {
@@ -232,7 +288,15 @@ export async function initCommand(options: InitOptions) {
   let targetAgent: TargetAgent;
   const agentAutoDetected = !options.agent;
   if (options.agent) {
-    targetAgent = options.agent;
+    if (!options.autoApprove) {
+      const useProvided = await confirm({
+        message: `Generate configs for these agents: ${options.agent.join(', ')}?`,
+        default: true,
+      });
+      targetAgent = useProvided ? options.agent : await promptAgent();
+    } else {
+      targetAgent = options.agent;
+    }
   } else {
     const detected = detectAgents(process.cwd());
     if (detected.length > 0 && (options.autoApprove || firstRun)) {
@@ -481,6 +545,25 @@ export async function initCommand(options: InitOptions) {
   let fingerprint!: Fingerprint;
   const sessionHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
+  // Pre-flight validation: check LLM provider before starting generation
+  const validation = validateLlmSetup();
+  if (!validation.ok) {
+    console.error(formatValidationError(validation));
+
+    // Offer recovery options to user
+    const choice = await handleValidationError(validation, options);
+    if (choice === 'exit') {
+      throw new Error('__exit__');
+    }
+    if (choice === 'skip') {
+      console.log(
+        chalk.yellow(
+          '\n  Skipping LLM-based stack detection. Proceeding with file analysis only...\n',
+        ),
+      );
+    }
+  }
+
   const display = new ParallelTaskDisplay();
   const TASK_STACK = display.add('Detecting project stack', { pipelineLabel: 'Scan' });
   const TASK_CONFIG = display.add('Generating configs', { depth: 1, pipelineLabel: 'Generate' });
@@ -488,10 +571,10 @@ export async function initCommand(options: InitOptions) {
     pipelineLabel: 'Validate',
   });
   display.start();
-  display.enableWaitingContent();
 
   try {
-    // Phase A: Fingerprint
+    // Phase A: Fingerprint — keep waiting carousel off until stack detection finishes
+    // so model-recovery prompts are not hidden behind raw-mode stdin capture.
     display.update(TASK_STACK, 'running');
     fingerprint = await collectFingerprint(process.cwd());
     const projectConfig = readProjectConfig();
@@ -510,6 +593,7 @@ export async function initCommand(options: InitOptions) {
         ? ` (${fingerprint.fileTree.length.toLocaleString()} files, smart sampling active)`
         : '';
     display.update(TASK_STACK, 'done', stackSummary + largeRepoNote);
+    display.enableWaitingContent();
 
     trackInitProjectDiscovered(
       fingerprint.languages.length,
@@ -555,6 +639,7 @@ export async function initCommand(options: InitOptions) {
       display.stop();
       fingerprint.description = await promptInput('What will you build in this project?');
       display.start();
+      display.enableWaitingContent();
     }
 
     // Phase B: Generate configs
@@ -699,7 +784,7 @@ export async function initCommand(options: InitOptions) {
     console.log(chalk.red('  Failed to generate config.'));
     writeErrorLog(config, rawOutput, undefined, genStopReason);
     if (rawOutput) {
-      console.log(chalk.dim('\nRaw LLM output (JSON parse failed):'));
+      console.log(chalk.dim('\nRaw LLM output (parse failed):'));
       console.log(chalk.dim(rawOutput.slice(0, 500)));
     }
     throw new Error('__exit__');
@@ -846,7 +931,7 @@ export async function initCommand(options: InitOptions) {
     throw new Error('__exit__');
   }
 
-  if (fingerprint) ensurePermissions(fingerprint);
+  if (fingerprint && !options.dangerouslySkipPermissions) ensurePermissions(fingerprint);
 
   const sha = getCurrentHeadSha();
   writeState({

@@ -302,6 +302,17 @@ describe('ParallelTaskDisplay', () => {
 
       expect(getLastFrame(getOutput())).toContain('Task');
     });
+
+    it('pauseForInteractivePrompt and resumeAfterInteractivePrompt do not throw', () => {
+      const display = new ParallelTaskDisplay();
+      const idx = display.add('Task');
+
+      display.start();
+      display.update(idx, 'running');
+      display.pauseForInteractivePrompt();
+      display.resumeAfterInteractivePrompt();
+      display.stop();
+    });
   });
 
   describe('full pipeline layout (init-like)', () => {

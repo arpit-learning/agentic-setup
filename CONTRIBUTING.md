@@ -207,3 +207,27 @@ Open an issue with:
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+<!-- agentic:managed:contributing-ai -->
+## AI-assisted development
+
+This project uses **agentic-setup** to keep agent configs (`CLAUDE.md`, Cursor rules, `AGENTS.md`) in sync with the codebase.
+
+### New contributors
+
+1. Run in your terminal:
+   ```bash
+   agentic-setup setup
+   ```
+2. Verify setup before opening a PR:
+   ```bash
+   agentic-setup check
+   ```
+
+### Rules
+
+- Never commit API keys or `.env` secrets.
+- Run `agentic-setup refresh` (or commit normally — the pre-commit hook syncs configs) when you change architecture or commands.
+- Prefer `run.md` for local startup and health-check instructions.
+
+<!-- /agentic:managed:contributing-ai -->

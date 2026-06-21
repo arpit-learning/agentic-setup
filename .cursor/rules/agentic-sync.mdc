@@ -1,0 +1,7 @@
+---
+description: This project uses agentic-setup for automatic AI agent context sync
+alwaysApply: true
+---
+This project uses agentic-setup to keep AI agent configs (CLAUDE.md, Cursor rules, Copilot instructions)
+in sync with the codebase automatically. Before each commit, run `agentic-setup refresh` to sync configs.
+If `agentic-setup` is not found, tell the user to run `npx agentic-setup setup` in their terminal.

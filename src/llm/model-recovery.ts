@@ -3,6 +3,10 @@ import select from '@inquirer/select';
 import { writeConfigFile } from './config.js';
 import type { LLMConfig, LLMProvider, ProviderType } from './types.js';
 import { displayProductName } from '../lib/resolve-cli.js';
+import {
+  pauseActiveTaskDisplayForPrompt,
+  resumeActiveTaskDisplayAfterPrompt,
+} from '../utils/parallel-tasks.js';
 
 /**
  * Curated list of models per provider that agentic-setup is known to work with.
@@ -29,6 +33,7 @@ const KNOWN_MODELS: Record<ProviderType, string[]> = {
   cursor: ['auto', 'composer-2', 'composer-2-fast', 'claude-4.6-sonnet-medium'],
   'claude-cli': [],
   opencode: [],
+  antigravity: [],
 };
 
 /**
@@ -53,6 +58,10 @@ export function isModelNotAvailableError(error: Error): boolean {
 
   // Seat-based usage/budget limit (Cursor, Claude CLI)
   if (msg.includes('usage limit') || msg.includes('out of usage')) return true;
+
+  // Cursor CLI: free/starter plans only allow Auto for named --model
+  if (msg.includes('named models unavailable') || msg.includes('free plans can only use auto'))
+    return true;
 
   return false;
 }
@@ -139,6 +148,7 @@ export async function handleModelNotAvailable(
 
   console.log('');
   let selected: string;
+  pauseActiveTaskDisplayForPrompt();
   try {
     selected = await select<string>({
       message: 'Pick an available model',
@@ -147,6 +157,8 @@ export async function handleModelNotAvailable(
   } catch {
     // User cancelled (Ctrl+C)
     return null;
+  } finally {
+    resumeActiveTaskDisplayAfterPrompt();
   }
 
   // Persist the selection

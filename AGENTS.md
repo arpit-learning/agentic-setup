@@ -1,47 +1,37 @@
 # agentic-setup
 
-`agentic-setup` — AI context infrastructure CLI. Scores, generates, and syncs agent configs.
-
 ## Commands
-
 ```bash
-npm run build        # tsdown → dist/
-npm run dev          # watch mode
-npm run test         # vitest run
-npm run lint         # eslint src/
-npx tsc --noEmit     # type check
+npm run build
+npm run dev
+npm run test
+```
+
+To run linter:
+```bash
+npm run lint
+```
+
+To run type checks:
+```bash
+npx tsc --noEmit
 ```
 
 ## Architecture
-
-**Entry**: `src/bin.ts` → `src/cli.ts` · **Build**: `tsdown.config.ts` · **Test**: `vitest.config.ts` · **Lint**: `eslint.config.js`
-
-**Commands** (`src/commands/`): `init.ts` · `score.ts` · `refresh.ts` · `regenerate.ts` · `config.ts` · `hooks.ts` · `learn.ts` · `recommend.ts` · `sources.ts` · `undo.ts` · `status.ts` · `setup-files.ts`
-
-**LLM** (`src/llm/`): `anthropic.ts` · `vertex.ts` · `openai-compat.ts` · `cursor-acp.ts` · `claude-cli.ts` · `types.ts` · `config.ts` · `model-recovery.ts`
-
-**AI** (`src/ai/`): `generate.ts` · `refine.ts` · `refresh.ts` · `detect.ts` · `learn.ts` · `score-refine.ts` · `prompts.ts`
-
-**Fingerprint** (`src/fingerprint/`): `index.ts` · `file-tree.ts` · `code-analysis.ts` · `sources.ts` · `cache.ts`
-
-**Scoring** (`src/scoring/`): `index.ts` · `constants.ts` · `display.ts` · Checks: `checks/existence.ts` · `checks/quality.ts` · `checks/grounding.ts` · `checks/accuracy.ts` · `checks/freshness.ts` · `checks/bonus.ts`
-
-**Writers** (`src/writers/`): `index.ts` · `claude/index.ts` · `cursor/index.ts` · `codex/index.ts` · `github-copilot/index.ts` · `staging.ts` · `manifest.ts` · `backup.ts`
-
-**Lib** (`src/lib/`): `hooks.ts` · `state.ts` · `resolve-cli.ts` · `builtin-skills.ts` · `sanitize.ts` · `git-diff.ts`
-
-**Other**: `src/constants.ts` · `tests/setup.ts` · `github-action/` · `packages/mcp-server/` · `packages/shared/` · `apps/`
+**Entry**: `src/bin.ts` → `src/cli.ts`
+**Commands** (`src/commands/`): `init.ts` · `score.ts` · `refresh.ts` · `regenerate.ts` · `config.ts` · `hooks.ts` · `insights.ts` · `doctor.ts` · `codegraph.ts` · `analyze.ts`
+**LLM** (`src/llm/`): `anthropic.ts` · `vertex.ts` · `openai-compat.ts` · `cursor-acp.ts` · `claude-cli.ts` · `antigravity.ts` · `minimax.ts` · `types.ts` · `config.ts`
+**AI** (`src/ai/`): `generate.ts` · `refine.ts` · `refresh.ts` · `detect.ts` · `learn.ts`
+**Scoring** (`src/scoring/`): `index.ts` · Checks: `checks/existence.ts` · `checks/quality.ts` · `checks/grounding.ts` · `checks/accuracy.ts` · `checks/freshness.ts`
+**MCP**: uses `codegraph` MCP server in `.agents/codegraph.json`
+**Workspace Tooling**: `.vscode/` (contains: mcp.json), `.idea/` (contains: mcp.json), `.windsurf/` (contains: mcp.json), and `.devin/` (contains: mcp.json) configures workspace details.
+**Hooks & CLI Settings**: Git hooks managed under `.husky/` (contains: _, pre-commit) and global options in `.gemini/` (contains: config).
+**Docs & Automation**: Scoring guides in `docs/` (contains: SCORING.md) and repository helpers in `scripts/` (contains: generate-readme-badges.ts).
 
 ## Conventions
-
-- ESM with `.js` extensions · Tests in `tests/` (mirrors `src/`) · `unknown` over `any`
-- Conventional commits (`feat:`, `fix:`, `refactor:`) · Dev: `next`, Stable: `master`
-- Providers implement `LLMProvider` from `src/llm/types.ts`
-- Writers in `src/writers/claude/index.ts` · `src/writers/codex/index.ts` return `string[]`
-- Scoring checks in `src/scoring/checks/` return `Check[]`
-- No hardcoded mappings — LLM-driven via `src/ai/detect.ts`
-- `collectFingerprint()` async with LLM enrichment (`src/fingerprint/index.ts`)
-- MCP server workspace: `packages/mcp-server/`
+- ESM imports require `.js` extensions.
+- Providers implement `LLMProvider` in `src/llm/types.ts`.
+- Pre-commit sync: run `agentic-setup refresh` if no hook active.
 
 <!-- agentic:managed:pre-commit -->
 ## Before Committing
@@ -56,10 +46,14 @@ grep -q "agentic-setup" .git/hooks/pre-commit 2>/dev/null && echo "hook-active" 
 - If **hook-active**: the hook handles sync automatically — just commit normally. Tell the user: "agentic-setup will sync your agent configs automatically via the pre-commit hook."
 - If **no-hook**: run agentic-setup manually before committing:
   1. Tell the user: "agentic-setup: Syncing agent configs with your latest changes..."
-  2. Run: `agentic-setup refresh && git add CLAUDE.md .claude/ .cursor/ .cursorrules .github/copilot-instructions.md .github/instructions/ AGENTS.md AGENTIC_LEARNINGS.md 2>/dev/null`
+  2. Run: `agentic-setup refresh && git add CLAUDE.md .claude/ .cursor/ .cursorrules .github/copilot-instructions.md .github/instructions/ AGENTS.md AGENTIC_LEARNINGS.md .agents/ .opencode/ 2>/dev/null`
   3. After it completes, briefly tell the user what agentic-setup updated. Then proceed with the commit.
 
-If `agentic-setup` is not found, tell the user: "This project uses agentic-setup for agent config sync. Run /setup-agentic to get set up."
+**Valid `agentic-setup refresh` options:** `--quiet` (suppress output) and `--dry-run` (preview without writing). Do not pass any other flags — options like `--auto-approve`, `--debug`, or `--force` do not exist and will cause errors.
+
+**`agentic-setup config`** takes no flags — it runs an interactive provider setup. Do not pass `--provider`, `--api-key`, or `--endpoint`.
+
+If `agentic-setup` is not found, tell the user: "This project uses agentic-setup for agent config sync. Run `npx agentic-setup setup` in your terminal (~1–2 min)."
 <!-- /agentic:managed:pre-commit -->
 
 <!-- agentic:managed:learnings -->
@@ -68,3 +62,20 @@ If `agentic-setup` is not found, tell the user: "This project uses agentic-setup
 Read `AGENTIC_LEARNINGS.md` for patterns and anti-patterns learned from previous sessions.
 These are auto-extracted from real tool usage — treat them as project-specific rules.
 <!-- /agentic:managed:learnings -->
+
+<!-- agentic:managed:model-config -->
+## Model Configuration
+
+Recommended default: `claude-sonnet-4-6` with high effort (stronger reasoning; higher cost and latency than smaller models).
+Smaller/faster models trade quality for speed and cost — pick what fits the task.
+Pin your choice (`/model` in Claude Code, or `AGENTIC_SETUP_MODEL` when using agentic-setup with an API provider) so upstream default changes do not silently change behavior.
+
+<!-- /agentic:managed:model-config -->
+
+<!-- agentic:managed:sync -->
+## Context Sync
+
+This project uses [agentic-setup](https://github.com/arpit-pm1/agentic-setup) to keep AI agent configs in sync across Claude Code, Cursor, Copilot, and Codex.
+Configs update automatically before each commit via `agentic-setup refresh`.
+If the pre-commit hook is not set up, run `npx agentic-setup setup` in your terminal.
+<!-- /agentic:managed:sync -->

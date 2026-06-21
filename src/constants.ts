@@ -12,6 +12,7 @@ export const SUPPORTED_TARGET_AGENTS = [
   'codex',
   'opencode',
   'github-copilot',
+  'antigravity',
 ] as const;
 
 export type SupportedTargetAgent = (typeof SUPPORTED_TARGET_AGENTS)[number];
@@ -22,6 +23,7 @@ export const AGENT_DISPLAY_NAMES: Record<SupportedTargetAgent, string> = {
   codex: 'Codex',
   opencode: 'OpenCode',
   'github-copilot': 'GitHub Copilot',
+  antigravity: 'Antigravity IDE',
 };
 
 export const AUTH_DIR = path.join(os.homedir(), '.agentic-setup');

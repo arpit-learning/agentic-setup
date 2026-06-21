@@ -20,9 +20,12 @@ function runScript(
   cwd: string,
   env: Record<string, string> = {},
 ): { status: number; stdout: string } {
+  const cleanEnv = { ...process.env };
+  delete cleanEnv.AGENTIC_SETUP_SUBPROCESS;
+  delete cleanEnv.AGENTIC_SETUP_SPAWNED;
   const result = spawnSync('sh', [SCRIPT], {
     cwd,
-    env: { ...process.env, ...env },
+    env: { ...cleanEnv, ...env },
     encoding: 'utf-8',
   });
   return { status: result.status ?? 1, stdout: (result.stdout ?? '') + (result.stderr ?? '') };
@@ -137,13 +140,8 @@ describe('agentic-check-sync.sh', () => {
     // whatever pre-commit happens to live under $PWD.
     const otherPwd = fs.mkdtempSync(path.join(os.tmpdir(), 'agentic-other-pwd-'));
     try {
-      const result = spawnSync('sh', [SCRIPT], {
-        cwd: otherPwd,
-        env: { ...process.env, CLAUDE_PROJECT_DIR: tmpDir },
-        encoding: 'utf-8',
-      });
-      const stdout = (result.stdout ?? '') + (result.stderr ?? '');
-      expect(result.status).toBe(0);
+      const { status, stdout } = runScript(otherPwd, { CLAUDE_PROJECT_DIR: tmpDir });
+      expect(status).toBe(0);
       expect(stdout).toContain('"decision":"block"');
     } finally {
       fs.rmSync(otherPwd, { recursive: true, force: true });

@@ -112,16 +112,52 @@ export function collectDoctorChecks(repoRoot: string): DoctorCheck[] {
     true,
     'Run: agentic-setup codegraph setup',
   );
+  add(
+    'Codegraph in .vscode/mcp.json',
+    fs.existsSync(path.join(repoRoot, '.vscode', 'mcp.json')),
+    false,
+    'Run: agentic-setup codegraph setup',
+  );
+  add(
+    'Codegraph in .windsurf/mcp.json',
+    fs.existsSync(path.join(repoRoot, '.windsurf', 'mcp.json')),
+    false,
+    'Run: agentic-setup codegraph setup',
+  );
+  add(
+    'Codegraph in .devin/mcp.json',
+    fs.existsSync(path.join(repoRoot, '.devin', 'mcp.json')),
+    false,
+    'Run: agentic-setup codegraph setup',
+  );
+  add(
+    'Codegraph in .codex/mcp.json',
+    fs.existsSync(path.join(repoRoot, '.codex', 'mcp.json')),
+    false,
+    'Run: agentic-setup codegraph setup',
+  );
+  add(
+    'Codegraph in .idea/mcp.json',
+    fs.existsSync(path.join(repoRoot, '.idea', 'mcp.json')),
+    false,
+    'Run: agentic-setup codegraph setup',
+  );
 
   const stats = getCodegraphStats(repoRoot);
   add('Codegraph index exists', stats.indexed, true, 'Run: agentic-setup codegraph setup');
 
   const cgCli = checkCodegraphCli(repoRoot);
-  add('codegraph-ai CLI available', cgCli.available, false);
+  add('Codegraph engine ready', cgCli.available, false, 'Node.js is required for codegraph');
 
   add(
-    'index-codegraph.sh exists',
-    fs.existsSync(path.join(repoRoot, 'scripts', 'index-codegraph.sh')),
+    'index-codegraph.js exists',
+    fs.existsSync(path.join(repoRoot, '.agentic-setup', 'index-codegraph.js')),
+    false,
+  );
+
+  add(
+    'codegraph-mcp-server.cjs exists',
+    fs.existsSync(path.join(repoRoot, '.agentic-setup', 'codegraph-mcp-server.cjs')),
     false,
   );
 
