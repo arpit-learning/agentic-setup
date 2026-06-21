@@ -140,10 +140,12 @@ describe('AntigravityProvider', () => {
   });
 
   it('requests JSON output format in the prompt', async () => {
-    let spawnArgs: string[] = [];
+    let commandLine = '';
     spawnMock.mockImplementation((bin: string, args?: string[] | object) => {
       if (Array.isArray(args)) {
-        spawnArgs = args;
+        commandLine = [bin, ...args].join(' ');
+      } else if (typeof bin === 'string') {
+        commandLine = bin;
       }
       return {
         stdout: {
@@ -161,9 +163,8 @@ describe('AntigravityProvider', () => {
     const { AntigravityProvider } = await import('../../src/llm/antigravity.js');
     const provider = new AntigravityProvider(config);
     await provider.call({ prompt: 'test prompt' });
-    const promptArg = spawnArgs[spawnArgs.length - 1];
-    expect(promptArg).toContain('JSON');
-    expect(promptArg).toContain('RESPOND WITH A VALID JSON BLOCK');
+    expect(commandLine).toContain('JSON');
+    expect(commandLine).toContain('RESPOND WITH A VALID JSON BLOCK');
   });
 });
 
