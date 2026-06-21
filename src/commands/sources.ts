@@ -36,7 +36,10 @@ export async function sourcesListCommand() {
       const status = exists ? chalk.green('reachable') : chalk.red('not found');
       const hasSummary =
         source.path &&
-        fs.existsSync(path.join(path.resolve(dir, source.path), '.agentic-setup', 'summary.json'));
+        (fs.existsSync(path.join(path.resolve(dir, source.path), '.agents', 'summary.json')) ||
+          fs.existsSync(
+            path.join(path.resolve(dir, source.path), '.agentic-setup', 'summary.json'),
+          ));
 
       console.log(`  ${chalk.bold(source.role || source.type)}  ${chalk.dim(sourcePath)}`);
       console.log(

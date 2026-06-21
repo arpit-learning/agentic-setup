@@ -2,7 +2,7 @@
 # https://github.com/arpit-pm1/agentic-setup
 
 version: 1
-agents: [github-copilot]
+agents: [claude, cursor, codex, github-copilot, antigravity]
 profile: auto
 codegraph: true
 analyze_on_setup: true

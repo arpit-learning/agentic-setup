@@ -92,12 +92,12 @@ export function isAntigravityLoggedIn(): boolean {
  * agy --print [--model <model>] [--print-timeout <duration>] <prompt>
  */
 function buildArgs(prompt: string, model: string | undefined, printTimeout: string): string[] {
-  const args: string[] = ['--print', '--dangerously-skip-permissions'];
+  const args: string[] = ['--dangerously-skip-permissions'];
   if (model && model !== 'default') {
     args.push('--model', model);
   }
   args.push('--print-timeout', printTimeout);
-  args.push(prompt);
+  args.push('--print', prompt);
   return args;
 }
 
