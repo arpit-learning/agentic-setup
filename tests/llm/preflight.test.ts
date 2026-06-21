@@ -339,7 +339,7 @@ describe('preflight validation', () => {
         const result = validateLlmSetup();
         expect(result.ok).toBe(false);
         expect(result.provider).toBe('antigravity');
-        expect(result.error).toContain('Antigravity CLI (agentapi) Not Installed');
+        expect(result.error).toContain('Antigravity CLI (agy) Not Installed');
       });
 
       it('should return error when CLI is not logged in', () => {
@@ -356,10 +356,23 @@ describe('preflight validation', () => {
         expect(result.error).toContain('Antigravity CLI Not Authenticated');
       });
 
-      it('should pass validation when CLI is available and logged in', () => {
+      it('should pass validation when CLI is available and logged in (no project ID required)', () => {
         vi.mocked(config.loadConfig).mockReturnValue({
           provider: 'antigravity',
           model: 'default',
+        });
+        vi.mocked(antigravity.isAntigravityAvailable).mockReturnValue(true);
+        vi.mocked(antigravity.isAntigravityLoggedIn).mockReturnValue(true);
+
+        const result = validateLlmSetup();
+        expect(result.ok).toBe(true);
+      });
+
+      it('should pass validation when CLI is available, logged in, and project ID is optionally configured', () => {
+        vi.mocked(config.loadConfig).mockReturnValue({
+          provider: 'antigravity',
+          model: 'pro',
+          vertexProjectId: 'my-gcp-project',
         });
         vi.mocked(antigravity.isAntigravityAvailable).mockReturnValue(true);
         vi.mocked(antigravity.isAntigravityLoggedIn).mockReturnValue(true);

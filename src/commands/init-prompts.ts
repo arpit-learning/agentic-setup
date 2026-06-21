@@ -11,7 +11,14 @@ import { llmJsonCall } from '../llm/index.js';
 import { promptReviewMethod, openReview } from '../utils/review.js';
 import type { StageResult } from '../writers/staging.js';
 
-export type TargetAgent = ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[];
+export type TargetAgent = (
+  | 'claude'
+  | 'cursor'
+  | 'codex'
+  | 'opencode'
+  | 'github-copilot'
+  | 'antigravity'
+)[];
 type ReviewAction = 'accept' | 'refine' | 'decline';
 
 export function detectAgents(dir: string): TargetAgent {
@@ -21,6 +28,7 @@ export function detectAgents(dir: string): TargetAgent {
   if (fs.existsSync(`${dir}/.agents`) || fs.existsSync(`${dir}/AGENTS.md`)) agents.push('codex');
   if (fs.existsSync(`${dir}/.opencode`)) agents.push('opencode');
   if (fs.existsSync(`${dir}/.github/copilot-instructions.md`)) agents.push('github-copilot');
+  if (fs.existsSync(`${dir}/.gemini`)) agents.push('antigravity');
   return agents;
 }
 
@@ -46,6 +54,11 @@ export async function promptAgent(detected?: TargetAgent): Promise<TargetAgent> 
       name: 'GitHub Copilot (sync target — writes copilot-instructions.md)',
       value: 'github-copilot' as const,
       checked: detected?.includes('github-copilot') ?? false,
+    },
+    {
+      name: 'Antigravity IDE',
+      value: 'antigravity' as const,
+      checked: detected?.includes('antigravity') ?? false,
     },
   ];
 

@@ -455,19 +455,21 @@ Or choose a different provider:
 }
 
 /**
- * Validate Antigravity CLI availability and login status.
+ * Validate Antigravity CLI (agy) availability and login status.
+ * No GCP Project ID required — agy authenticates via the Google account / IDE session.
+ * Runtime errors are caught and surfaced via the seat-based error parser.
  */
 function validateAntigravityCli(): ValidationResult {
   if (!isAntigravityAvailable()) {
     return {
       ok: false,
       provider: 'antigravity',
-      error: 'Antigravity CLI (agentapi) Not Installed',
-      detail: `The Antigravity CLI (agentapi) is not installed or not found on PATH.
+      error: 'Antigravity CLI (agy) Not Installed',
+      detail: `The Antigravity CLI (agy) is not installed or not found on PATH.
 
 To fix:
-1. Please ensure Antigravity IDE is running and its CLI is on your PATH.
-2. Alternatively, run: export ANTHROPIC_API_KEY=sk-ant-<your-key>
+1. Install agy: https://goo.gle/agy
+2. Run \`agy\` once to authenticate with your Google account.
 3. Then retry: agentic-setup init`,
       recoveryOptions: [
         { label: 'Retry detection', action: 'fix-now' },
@@ -482,10 +484,10 @@ To fix:
       ok: false,
       provider: 'antigravity',
       error: 'Antigravity CLI Not Authenticated',
-      detail: `Antigravity CLI (agentapi) is installed but not authenticated.
+      detail: `Antigravity CLI (agy) is installed but not authenticated.
 
 To fix:
-1. Ensure the Antigravity IDE is running and authenticated.
+1. Run \`agy\` once and sign in with your Google account.
 2. Then retry: agentic-setup init`,
       recoveryOptions: [
         { label: 'Retry detection', action: 'fix-now' },

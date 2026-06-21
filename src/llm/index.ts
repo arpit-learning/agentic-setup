@@ -81,12 +81,12 @@ function createProvider(config: LLMConfig): LLMProvider {
     case 'antigravity': {
       if (!isAntigravityAvailable()) {
         throw new Error(
-          'Antigravity provider requires the Antigravity CLI. Install it and ensure it is on your PATH. Alternatively set ANTHROPIC_API_KEY or choose another provider.',
+          'Antigravity provider requires the `agy` CLI. Install it from https://goo.gle/agy and run `agy` once to authenticate. Alternatively set ANTHROPIC_API_KEY or choose another provider.',
         );
       }
       if (!isAntigravityLoggedIn()) {
         throw new Error(
-          'Antigravity CLI is installed but not logged in. Run `antigravity auth login` in your terminal to authenticate, then retry.',
+          'Antigravity CLI (agy) is installed but not authenticated. Run `agy` once and sign in with your Google account, then retry.',
         );
       }
       return new AntigravityProvider(config);

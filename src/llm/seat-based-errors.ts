@@ -21,6 +21,11 @@ const ERROR_PATTERNS: Array<{ pattern: RegExp; message: string | (() => string) 
     message: () =>
       `Named models are unavailable on your Cursor plan. Run \`${displayProductName()} config\` and set the scan model to auto.`,
   },
+  {
+    pattern: /project_id is required|missing project_id/i,
+    message: () =>
+      `GCP Project ID is required. Run \`${displayProductName()} config\` or set the ANTIGRAVITY_PROJECT_ID environment variable.`,
+  },
 ];
 
 export function parseSeatBasedError(stderr: string, exitCode: number | null): string | null {

@@ -149,8 +149,8 @@ describe('buildGeneratePrompt', () => {
     });
     const prompt = buildGeneratePrompt(_high, ['claude']);
     expect(prompt).toContain('trimmed to');
-    expect(prompt).toContain('150,000');
-    expect(prompt).toContain('200,000');
+    expect(prompt).toContain((150000).toLocaleString());
+    expect(prompt).toContain((200000).toLocaleString());
     expect(prompt).toContain('75%');
   });
 

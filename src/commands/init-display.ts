@@ -34,8 +34,9 @@ export function formatWhatChanged(setup: Record<string, unknown>): string[] {
   }
 
   const opencode = setup.opencode as Record<string, unknown> | undefined;
+  const antigravity = setup.antigravity as Record<string, unknown> | undefined;
 
-  if (codex?.agentsMd || opencode?.agentsMd) {
+  if (codex?.agentsMd || opencode?.agentsMd || antigravity?.agentsMd) {
     const action = fs.existsSync('AGENTS.md') ? 'Updated' : 'Created';
     lines.push(`${action} AGENTS.md`);
   }
@@ -46,6 +47,7 @@ export function formatWhatChanged(setup: Record<string, unknown>): string[] {
     ['codex', codex],
     ['opencode', opencode],
     ['cursor', cursor],
+    ['antigravity', antigravity],
   ] as const) {
     const skills = (obj as Record<string, unknown> | undefined)?.skills as
       | Array<{ name: string }>
@@ -166,6 +168,32 @@ export function printSetupSummary(setup: Record<string, unknown>) {
     if (Array.isArray(opencodeSkills) && opencodeSkills.length > 0) {
       for (const skill of opencodeSkills) {
         const skillPath = `.opencode/skills/${skill.name}/SKILL.md`;
+        const icon = fs.existsSync(skillPath) ? chalk.yellow('~') : chalk.green('+');
+        const desc = getDescription(skillPath);
+        console.log(`  ${icon} ${chalk.bold(skillPath)}`);
+        console.log(chalk.dim(`    ${desc || skill.description || skill.name}`));
+        console.log('');
+      }
+    }
+  }
+
+  const antigravity = setup.antigravity as Record<string, unknown> | undefined;
+
+  if (antigravity) {
+    if (antigravity.agentsMd && !codex?.agentsMd && !opencode?.agentsMd) {
+      const icon = fs.existsSync('AGENTS.md') ? chalk.yellow('~') : chalk.green('+');
+      const desc = getDescription('AGENTS.md');
+      console.log(`  ${icon} ${chalk.bold('AGENTS.md')} ${chalk.dim('(Antigravity IDE)')}`);
+      if (desc) console.log(chalk.dim(`    ${desc}`));
+      console.log('');
+    }
+
+    const antigravitySkills = antigravity.skills as
+      | Array<{ name: string; description: string; content: string }>
+      | undefined;
+    if (Array.isArray(antigravitySkills) && antigravitySkills.length > 0) {
+      for (const skill of antigravitySkills) {
+        const skillPath = `.gemini/rules/${skill.name}/SKILL.md`;
         const icon = fs.existsSync(skillPath) ? chalk.yellow('~') : chalk.green('+');
         const desc = getDescription(skillPath);
         console.log(`  ${icon} ${chalk.bold(skillPath)}`);

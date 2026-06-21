@@ -50,6 +50,7 @@ export async function codegraphSetupCommand(options: CodegraphSetupOptions = {})
     console.log(chalk.green('  ✓ Added codegraph to .devin/mcp.json'));
     console.log(chalk.green('  ✓ Added codegraph to .codex/mcp.json'));
     console.log(chalk.green('  ✓ Added codegraph to .idea/mcp.json'));
+    console.log(chalk.green('  ✓ Added codegraph to ~/.gemini/config/mcp_config.json'));
   } else {
     console.log(chalk.dim('  · Codegraph already in .cursor/mcp.json'));
     console.log(chalk.dim('  · Codegraph already in .vscode/mcp.json'));
@@ -57,6 +58,7 @@ export async function codegraphSetupCommand(options: CodegraphSetupOptions = {})
     console.log(chalk.dim('  · Codegraph already in .devin/mcp.json'));
     console.log(chalk.dim('  · Codegraph already in .codex/mcp.json'));
     console.log(chalk.dim('  · Codegraph already in .idea/mcp.json'));
+    console.log(chalk.dim('  · Codegraph already in ~/.gemini/config/mcp_config.json'));
   }
   console.log(chalk.green(`  ✓ Wrote ${scriptPath}`));
   console.log(chalk.green(`  ✓ Wrote ${mcpServerPath}`));

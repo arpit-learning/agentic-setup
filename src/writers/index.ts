@@ -4,18 +4,20 @@ import { writeCursorConfig } from './cursor/index.js';
 import { writeCodexConfig } from './codex/index.js';
 import { writeGithubCopilotConfig } from './github-copilot/index.js';
 import { writeOpencodeConfig } from './opencode/index.js';
+import { writeAntigravityConfig } from './antigravity/index.js';
 import { createBackup, restoreBackup } from './backup.js';
-import { MANIFEST_FILE } from '../constants.js';
+import { MANIFEST_FILE, type SupportedTargetAgent } from '../constants.js';
 import { readManifest, writeManifest, fileChecksum, type ManifestEntry } from './manifest.js';
 
 export interface AgentSetup {
-  targetAgent: ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[];
+  targetAgent: SupportedTargetAgent[];
   deletions?: Array<{ filePath: string; reason: string }>;
   claude?: Parameters<typeof writeClaudeConfig>[0];
   cursor?: Parameters<typeof writeCursorConfig>[0];
   codex?: Parameters<typeof writeCodexConfig>[0];
   opencode?: Parameters<typeof writeOpencodeConfig>[0];
   copilot?: Parameters<typeof writeGithubCopilotConfig>[0];
+  antigravity?: Parameters<typeof writeAntigravityConfig>[0];
 }
 
 export function writeSetup(setup: AgentSetup): {
@@ -53,6 +55,12 @@ export function writeSetup(setup: AgentSetup): {
 
   if (setup.targetAgent.includes('github-copilot') && setup.copilot) {
     written.push(...writeGithubCopilotConfig(setup.copilot));
+  }
+
+  if (setup.targetAgent.includes('antigravity') && setup.antigravity) {
+    // If another platform wrote AGENTS.md, we could technically merge, but the codex/opencode writers append natively.
+    // For now, antigravity writer uses appendManagedBlocks which handles merges gracefully.
+    written.push(...writeAntigravityConfig(setup.antigravity));
   }
 
   const deleted: string[] = [];
@@ -152,6 +160,15 @@ export function getFilesToWrite(setup: AgentSetup): string[] {
     }
     if (setup.opencode.skills) {
       for (const s of setup.opencode.skills) files.push(`.opencode/skills/${s.name}/SKILL.md`);
+    }
+  }
+
+  if (setup.targetAgent.includes('antigravity') && setup.antigravity) {
+    if (!setup.targetAgent.includes('codex') && !setup.targetAgent.includes('opencode')) {
+      files.push('AGENTS.md');
+    }
+    if (setup.antigravity.skills) {
+      for (const s of setup.antigravity.skills) files.push(`.gemini/rules/${s.name}/SKILL.md`);
     }
   }
 

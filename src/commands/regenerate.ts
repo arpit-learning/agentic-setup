@@ -17,6 +17,7 @@ import { collectSetupFiles } from './setup-files.js';
 import { trackRegenerateCompleted } from '../telemetry/events.js';
 import { runScoreRefineWithSpinner } from '../ai/score-refine.js';
 import { displayProductName } from '../lib/resolve-cli.js';
+import { isDebugMode } from '../lib/debug.js';
 
 export async function regenerateCommand(options: { dryRun?: boolean }) {
   const bin = displayProductName();
@@ -86,7 +87,10 @@ export async function regenerateCommand(options: { dryRun?: boolean }) {
   } catch (err) {
     genMessages.stop();
     const msg = err instanceof Error ? err.message : 'Unknown error';
-    genSpinner.fail(`Regeneration failed: ${msg}`);
+    genSpinner.fail(`Generation error: ${msg}`);
+    if (isDebugMode() && err instanceof Error && err.stack) {
+      console.error(chalk.dim(`\n${err.stack}\n`));
+    }
     throw new Error('__exit__');
   }
 

@@ -20,6 +20,7 @@ export interface SetupOptions {
   skipLlm?: boolean;
   json?: boolean;
   autoApprove?: boolean;
+  dangerouslySkipPermissions?: boolean;
 }
 
 function toInitAgents(agents: TargetAgentName[]): TargetAgent {
@@ -72,9 +73,10 @@ export async function setupCommand(options: SetupOptions = {}): Promise<void> {
     if (!options.skipLlm) {
       await initCommand({
         agent: toInitAgents(config.agents),
-        autoApprove: options.autoApprove ?? true,
+        autoApprove: options.autoApprove ?? false,
         dryRun: false,
         verbose: false,
+        dangerouslySkipPermissions: options.dangerouslySkipPermissions,
       });
       mark('init', 'done');
     }

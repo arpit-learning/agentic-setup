@@ -10,7 +10,9 @@ import {
 import { extractAllDeps } from '../utils/dependencies.js';
 import { formatSourcesForPrompt } from '../fingerprint/sources.js';
 
-type TargetAgent = ('claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot')[];
+import { type SupportedTargetAgent } from '../constants.js';
+
+type TargetAgent = SupportedTargetAgent[];
 
 interface GenerateCallbacks {
   onStatus: (message: string) => void;
@@ -82,7 +84,71 @@ export function buildDiagnostic(
     return 'Model produced no output. Check your API key and model name.';
   }
 
-  return `Model responded but output was not valid JSON. First 200 chars:\n${raw.slice(0, 200)}`;
+  return `Model responded but did not output any valid JSON or Markdown config files. First 200 chars:\n${raw.slice(0, 200)}`;
+}
+
+function getPlatformForFile(filePath: string): string {
+  if (filePath.includes('.claude/rules/') || filePath === 'CLAUDE.md') return 'claude';
+  if (filePath.includes('.cursor/rules/')) return 'cursor';
+  if (filePath === 'AGENTS.md') return 'codex';
+  if (filePath.includes('.opencode/')) return 'opencode';
+  if (
+    filePath.includes('.github/copilot-instructions.md') ||
+    filePath.includes('.github/instructions/')
+  )
+    return 'copilot';
+  if (filePath.includes('.gemini/')) return 'antigravity';
+  return 'claude'; // default fallback
+}
+
+function parseTextToSetup(text: string): Record<string, unknown> | null {
+  const setup: Record<string, unknown> = {
+    fileDescriptions: {},
+  };
+  let hasFiles = false;
+
+  function addFile(filePath: string, content: string, source: string) {
+    if (!content) return;
+    const platform = getPlatformForFile(filePath);
+    if (!setup[platform]) {
+      setup[platform] = { config: {} };
+    }
+    ((setup[platform] as Record<string, unknown>).config as Record<string, string>)[filePath] =
+      content;
+    (setup.fileDescriptions as Record<string, string>)[filePath] = source;
+    hasFiles = true;
+  }
+
+  const sections = text.split(/^(?:#+ )/m);
+  for (const section of sections) {
+    if (!section.trim()) continue;
+    const lines = section.split('\n');
+    const titleLine = lines[0].trim();
+    if (titleLine.includes('.md') || titleLine.includes('.mdc')) {
+      const match = titleLine.match(/([a-zA-Z0-9_./-]+\.md(?:c)?)/);
+      if (match) {
+        const filePath = match[1];
+        let content = lines.slice(1).join('\n').trim();
+        if (content.startsWith('```') && content.endsWith('```')) {
+          content = content
+            .replace(/^```[a-z]*\n/, '')
+            .replace(/\n```$/, '')
+            .trim();
+        }
+        addFile(filePath, content, 'Generated from markdown text');
+      }
+    }
+  }
+
+  const blockRegex = /```[a-z]*\s*([a-zA-Z0-9_./-]+\.md(?:c)?)\s*\n([\s\S]*?)```/g;
+  let blockMatch;
+  while ((blockMatch = blockRegex.exec(text)) !== null) {
+    const filePath = blockMatch[1];
+    const content = blockMatch[2].trim();
+    addFile(filePath, content, 'Generated from code block');
+  }
+
+  return hasFiles ? setup : null;
 }
 
 function isTransientError(error: Error): boolean {
@@ -392,16 +458,24 @@ interface StreamGenerationConfig {
 async function streamGeneration(config: StreamGenerationConfig): Promise<GenerationResult> {
   const provider = getProvider();
   let attempt = 0;
-  const inactivityTimeoutMs = parseEnvTimeout(
+  let inactivityTimeoutMs = parseEnvTimeout(
     'AGENTIC_SETUP_STREAM_INACTIVITY_TIMEOUT_MS',
     DEFAULT_INACTIVITY_TIMEOUT_MS,
     5000,
   );
-  const totalTimeoutMs = parseEnvTimeout(
+  if (provider.constructor.name === 'AntigravityProvider') {
+    // agy --print buffers output and does not stream line-by-line.
+    // We increase the inactivity timeout to 15m to avoid premature aborts.
+    inactivityTimeoutMs = Math.max(inactivityTimeoutMs, 15 * 60 * 1000);
+  }
+  let totalTimeoutMs = parseEnvTimeout(
     'AGENTIC_SETUP_GENERATION_TIMEOUT_MS',
     DEFAULT_TOTAL_TIMEOUT_MS,
     5000,
   );
+  if (provider.constructor.name === 'AntigravityProvider') {
+    totalTimeoutMs = Math.max(totalTimeoutMs, 15 * 60 * 1000);
+  }
 
   // Wall-clock cap across all retry attempts
   let totalTimedOut = false;
@@ -544,7 +618,9 @@ async function streamGeneration(config: StreamGenerationConfig): Promise<Generat
 
               try {
                 setup = JSON.parse(jsonToParse);
-              } catch {}
+              } catch {
+                setup = parseTextToSetup(preJsonBuffer);
+              }
 
               if (!setup && stopReason === 'max_tokens' && attempt < MAX_RETRIES) {
                 if (config.callbacks)

@@ -103,8 +103,13 @@ export async function runInteractiveProviderSetup(options?: {
     }
     case 'antigravity': {
       if (!isAntigravityAvailable()) {
-        console.log(chalk.yellow('\n  Antigravity CLI (agentapi) not found on PATH.'));
-        console.log(chalk.dim('  Please make sure Antigravity IDE is running and on your PATH.'));
+        console.log(chalk.yellow('\n  Antigravity CLI (agy) not found on PATH.'));
+        console.log(chalk.dim('  Install it: ') + chalk.hex('#83D1EB')('https://goo.gle/agy'));
+        console.log(
+          chalk.dim('  After install, run ') +
+            chalk.hex('#83D1EB')('agy') +
+            chalk.dim(' once to authenticate via your Google account.\n'),
+        );
         const proceed = await confirm({ message: 'Continue anyway?' });
         if (!proceed) throw new Error('__exit__');
       }
@@ -114,20 +119,28 @@ export async function runInteractiveProviderSetup(options?: {
         process.env.VERTEX_PROJECT_ID ||
         process.env.GCP_PROJECT_ID ||
         '';
-      config.vertexProjectId = await promptInput(
-        `Antigravity/GCP Project ID (default: ${defaultProject || 'none'}):`,
-      );
-      if (!config.vertexProjectId && !defaultProject) {
-        console.log(chalk.red('Project ID is required.'));
-        throw new Error('__exit__');
-      }
-      if (!config.vertexProjectId) {
-        config.vertexProjectId = defaultProject;
-      }
+      config.vertexProjectId =
+        (await promptInput(`Antigravity/GCP Project ID (default: ${defaultProject || 'none'}):`)) ||
+        defaultProject ||
+        undefined;
 
-      config.model =
-        (await promptInput(`Model (default: ${DEFAULT_MODELS.antigravity}):`)) ||
-        DEFAULT_MODELS.antigravity;
+      const modelChoice = await select<string>({
+        message: 'Select model',
+        choices: [
+          { name: 'default (Default IDE Model)', value: 'default' },
+          { name: 'pro (Gemini Pro)', value: 'pro' },
+          { name: 'flash (Gemini Flash)', value: 'flash' },
+          { name: 'flash_lite (Gemini Flash Lite)', value: 'flash_lite' },
+          { name: 'Custom model name...', value: 'custom' },
+        ],
+        default: 'default',
+      });
+
+      if (modelChoice === 'custom') {
+        config.model = (await promptInput('Model name (e.g. gemini-2.5-pro):')) || 'default';
+      } else {
+        config.model = modelChoice;
+      }
       break;
     }
     case 'cursor': {
