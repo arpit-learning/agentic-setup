@@ -92,7 +92,7 @@
     "ora": "^9.4.1",
     "p-limit": "^7.3.0",
     "posthog-node": "^5.38.2",
-    "web-tree-sitter": "^0.20.8"
+    "web-tree-sitter": "^0.26.10"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
