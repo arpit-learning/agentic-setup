@@ -21,20 +21,10 @@ import {
 import { getDismissedIds } from './dismissed.js';
 
 export type TargetAgent = (
-  | 'claude'
-  | 'cursor'
-  | 'codex'
-  | 'opencode'
-  | 'github-copilot'
-  | 'antigravity'
+  'claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot' | 'antigravity'
 )[];
 export type CheckCategory =
-  | 'existence'
-  | 'quality'
-  | 'grounding'
-  | 'accuracy'
-  | 'freshness'
-  | 'bonus';
+  'existence' | 'quality' | 'grounding' | 'accuracy' | 'freshness' | 'bonus';
 
 export interface CheckFix {
   readonly action: string;

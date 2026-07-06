@@ -50,8 +50,7 @@ export function formatWhatChanged(setup: Record<string, unknown>): string[] {
     ['antigravity', antigravity],
   ] as const) {
     const skills = (obj as Record<string, unknown> | undefined)?.skills as
-      | Array<{ name: string }>
-      | undefined;
+      Array<{ name: string }> | undefined;
     if (Array.isArray(skills)) {
       for (const s of skills) allSkills.push(s.name);
     }
@@ -65,8 +64,7 @@ export function formatWhatChanged(setup: Record<string, unknown>): string[] {
   }
 
   const rules = (cursor as Record<string, unknown> | undefined)?.rules as
-    | Array<{ filename: string }>
-    | undefined;
+    Array<{ filename: string }> | undefined;
   if (Array.isArray(rules) && rules.length > 0) {
     const names =
       rules.length <= 3
@@ -111,8 +109,7 @@ export function printSetupSummary(setup: Record<string, unknown>) {
     }
 
     const skills = claude.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(skills) && skills.length > 0) {
       for (const skill of skills) {
         const skillPath = `.claude/skills/${skill.name}/SKILL.md`;
@@ -137,8 +134,7 @@ export function printSetupSummary(setup: Record<string, unknown>) {
     }
 
     const codexSkills = codex.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(codexSkills) && codexSkills.length > 0) {
       for (const skill of codexSkills) {
         const skillPath = `.agents/skills/${skill.name}/SKILL.md`;
@@ -163,8 +159,7 @@ export function printSetupSummary(setup: Record<string, unknown>) {
     }
 
     const opencodeSkills = opencode.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(opencodeSkills) && opencodeSkills.length > 0) {
       for (const skill of opencodeSkills) {
         const skillPath = `.opencode/skills/${skill.name}/SKILL.md`;
@@ -189,8 +184,7 @@ export function printSetupSummary(setup: Record<string, unknown>) {
     }
 
     const antigravitySkills = antigravity.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(antigravitySkills) && antigravitySkills.length > 0) {
       for (const skill of antigravitySkills) {
         const skillPath = `.gemini/rules/${skill.name}/SKILL.md`;
@@ -213,8 +207,7 @@ export function printSetupSummary(setup: Record<string, unknown>) {
     }
 
     const cursorSkills = cursor.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(cursorSkills) && cursorSkills.length > 0) {
       for (const skill of cursorSkills) {
         const skillPath = `.cursor/skills/${skill.name}/SKILL.md`;

@@ -66,8 +66,7 @@ function extractConfigContent(setup: Record<string, unknown>): ConfigContent {
     ['cursor', cursor],
   ] as const) {
     const platformSkills = (obj as Record<string, unknown> | undefined)?.skills as
-      | Array<{ name: string; content: string }>
-      | undefined;
+      Array<{ name: string; content: string }> | undefined;
     if (Array.isArray(platformSkills)) {
       for (const skill of platformSkills) {
         if (typeof skill.content === 'string' && skill.content.length > 0) {
@@ -492,8 +491,7 @@ async function applyTargetedFixes(
         for (const platform of ['claude', 'cursor', 'codex'] as const) {
           const platformObj = patched[platform] as Record<string, unknown> | undefined;
           const platformSkills = platformObj?.skills as
-            | Array<{ name: string; content: string }>
-            | undefined;
+            Array<{ name: string; content: string }> | undefined;
           const skill = platformSkills?.find((s) => s.name === skillName);
           if (skill) {
             skill.content = fixedValue;

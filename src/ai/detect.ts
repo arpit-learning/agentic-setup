@@ -13,10 +13,27 @@ export async function detectProjectStack(
   fileTree: string[],
   suffixCounts: Record<string, number>,
   modelOverride?: string,
+  programmaticHints?: { languages: string[]; frameworks: string[]; tools: string[] },
 ): Promise<DetectResult> {
   const parts: string[] = [
     'Analyze this project and detect languages, frameworks, and external tools/services.\n',
   ];
+
+  if (programmaticHints) {
+    parts.push('Programmatic checks have already pre-detected these components:');
+    if (programmaticHints.languages.length > 0) {
+      parts.push(`- Languages: ${programmaticHints.languages.join(', ')}`);
+    }
+    if (programmaticHints.frameworks.length > 0) {
+      parts.push(`- Frameworks: ${programmaticHints.frameworks.join(', ')}`);
+    }
+    if (programmaticHints.tools.length > 0) {
+      parts.push(`- Tools/Libraries: ${programmaticHints.tools.join(', ')}`);
+    }
+    parts.push(
+      '\nUse this as baseline information. Search the file tree to confirm and find any other languages, frameworks, tools, services, and sub-workspaces that were not listed above.\n',
+    );
+  }
 
   if (fileTree.length > 0) {
     const cappedTree = fileTree.slice(0, 500);

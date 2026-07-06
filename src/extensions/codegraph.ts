@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import https from 'https';
 import { execFileSync } from 'child_process';
-import Parser from 'web-tree-sitter';
+import { Parser, Language, Node } from 'web-tree-sitter';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -167,7 +167,7 @@ interface ExtractedCall {
 }
 
 function traverseAst(
-  node: Parser.SyntaxNode,
+  node: Node,
   langName: string,
   filePath: string,
   currentCallerId: string | null,
@@ -366,7 +366,7 @@ export async function runCodegraphIndex(
         continue;
       }
 
-      const lang = await Parser.Language.load(wasmPath);
+      const lang = await Language.load(wasmPath);
       const parser = new Parser();
       parser.setLanguage(lang);
 
@@ -374,8 +374,10 @@ export async function runCodegraphIndex(
         try {
           const content = fs.readFileSync(file, 'utf-8');
           const tree = parser.parse(content);
-          traverseAst(tree.rootNode, langName, file, null, symbols, calls);
-          parsedFiles.push(file);
+          if (tree) {
+            traverseAst(tree.rootNode, langName, file, null, symbols, calls);
+            parsedFiles.push(file);
+          }
         } catch {
           // ignore individual parse errors
         }

@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
 import type { CodeAnalysis } from './code-analysis.js';
+import type { ProjectContext } from './project-context.js';
 
 const CACHE_VERSION = 1;
 const CACHE_DIR = '.agentic-setup/cache';
@@ -17,6 +18,7 @@ interface FingerprintCache {
   frameworks: string[];
   tools: string[];
   workspaces?: string[];
+  projectContext?: ProjectContext;
 }
 
 function getCachePath(dir: string): string {
@@ -67,6 +69,7 @@ export function loadFingerprintCache(
   frameworks: string[];
   tools: string[];
   workspaces?: string[];
+  projectContext?: ProjectContext;
 } | null {
   const cachePath = getCachePath(dir);
   try {
@@ -88,6 +91,7 @@ export function loadFingerprintCache(
       frameworks: cache.frameworks,
       tools: cache.tools,
       workspaces: cache.workspaces,
+      projectContext: cache.projectContext,
     };
   } catch {
     return null;
@@ -102,6 +106,7 @@ export function saveFingerprintCache(
   frameworks: string[],
   tools: string[],
   workspaces?: string[],
+  projectContext?: ProjectContext,
 ): void {
   const cachePath = getCachePath(dir);
   try {
@@ -119,6 +124,7 @@ export function saveFingerprintCache(
       frameworks,
       tools,
       workspaces,
+      projectContext,
     };
 
     fs.writeFileSync(cachePath, JSON.stringify(cache), 'utf-8');
