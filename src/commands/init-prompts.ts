@@ -12,12 +12,7 @@ import { promptReviewMethod, openReview } from '../utils/review.js';
 import type { StageResult } from '../writers/staging.js';
 
 export type TargetAgent = (
-  | 'claude'
-  | 'cursor'
-  | 'codex'
-  | 'opencode'
-  | 'github-copilot'
-  | 'antigravity'
+  'claude' | 'cursor' | 'codex' | 'opencode' | 'github-copilot' | 'antigravity'
 )[];
 type ReviewAction = 'accept' | 'refine' | 'decline';
 
