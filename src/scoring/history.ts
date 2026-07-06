@@ -33,6 +33,10 @@ export function recordScore(result: ScoreResult, trigger: ScoreEntry['trigger'])
     const filePath = historyFilePath();
     fs.appendFileSync(filePath, JSON.stringify(entry) + '\n');
 
+    // Also write current score result to score.json
+    const scorePath = path.join(AGENTIC_DIR, 'score.json');
+    fs.writeFileSync(scorePath, JSON.stringify(result, null, 2) + '\n');
+
     // Trim only when well past the limit to avoid read+rewrite on every call
     const stat = fs.statSync(filePath);
     if (stat.size > TRIM_THRESHOLD * 120) {

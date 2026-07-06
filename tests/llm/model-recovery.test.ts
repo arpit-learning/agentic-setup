@@ -14,8 +14,12 @@ const { mockSelect } = vi.hoisted(() => ({
   mockSelect: vi.fn(),
 }));
 
-vi.mock('@inquirer/select', () => ({
-  default: (...args: unknown[]) => mockSelect(...args),
+vi.mock('@clack/prompts', () => ({
+  intro: vi.fn(),
+  outro: vi.fn(),
+  cancel: vi.fn(),
+  isCancel: vi.fn((val) => val === undefined || val === null || val === 'cancel'),
+  select: (...args: unknown[]) => mockSelect(...args),
 }));
 
 import { isModelNotAvailableError, handleModelNotAvailable } from '../../src/llm/model-recovery.js';
@@ -152,16 +156,16 @@ describe('handleModelNotAvailable', () => {
     // Should only show claude- models, excluding the failed one
     expect(mockSelect).toHaveBeenCalledWith(
       expect.objectContaining({
-        choices: expect.arrayContaining([
+        options: expect.arrayContaining([
           expect.objectContaining({ value: 'claude-haiku-4-5-20251001' }),
           expect.objectContaining({ value: 'claude-opus-4-1-20250620' }),
         ]),
       }),
     );
     // Should NOT include non-claude models or the failed model
-    const choices = mockSelect.mock.calls[0][0].choices;
-    expect(choices.find((c: { value: string }) => c.value === 'whisper-1')).toBeUndefined();
-    expect(choices.find((c: { value: string }) => c.value === 'claude-sonnet-4-6')).toBeUndefined();
+    const options = mockSelect.mock.calls[0][0].options;
+    expect(options.find((c: { value: string }) => c.value === 'whisper-1')).toBeUndefined();
+    expect(options.find((c: { value: string }) => c.value === 'claude-sonnet-4-6')).toBeUndefined();
   });
 
   it('falls back to known models when listModels is not available', async () => {
@@ -229,8 +233,8 @@ describe('handleModelNotAvailable', () => {
     const result = await handleModelNotAvailable('sonnet-4.6', provider, config);
 
     expect(result).toBe('auto');
-    const choices = mockSelect.mock.calls[0][0].choices;
-    const values = choices.map((c: { value: string }) => c.value);
+    const options = mockSelect.mock.calls[0][0].options;
+    const values = options.map((c: { value: string }) => c.value);
     expect(values).toContain('auto');
     expect(values).toContain('composer-2');
     expect(values).not.toContain('sonnet-4.6');
@@ -239,7 +243,7 @@ describe('handleModelNotAvailable', () => {
   it('returns null when user cancels selection', async () => {
     const provider = makeProvider();
     const config = makeConfig();
-    mockSelect.mockRejectedValue(new Error('User cancelled'));
+    mockSelect.mockResolvedValue('cancel');
 
     const result = await handleModelNotAvailable('claude-sonnet-4-6', provider, config);
 
@@ -264,8 +268,8 @@ describe('handleModelNotAvailable', () => {
 
     await handleModelNotAvailable('gpt-5.4-mini', provider, config);
 
-    const choices = mockSelect.mock.calls[0][0].choices;
-    const values = choices.map((c: { value: string }) => c.value);
+    const options = mockSelect.mock.calls[0][0].options;
+    const values = options.map((c: { value: string }) => c.value);
     expect(values).toContain('gpt-4o');
     expect(values).toContain('gpt-4o-mini');
     expect(values).toContain('o3-mini');
