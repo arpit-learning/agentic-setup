@@ -50,7 +50,7 @@ export async function collectFingerprint(dir: string): Promise<Fingerprint> {
       fileTree,
       existingConfigs,
       codeAnalysis: cached.codeAnalysis,
-      projectContext: cached.projectContext || projectContext,
+      projectContext,
     };
   }
 
