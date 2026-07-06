@@ -89,7 +89,7 @@
     "glob": "^13.0.6",
     "google-auth-library": "^10.7.0",
     "openai": "^6.44.0",
-    "ora": "^9.4.0",
+    "ora": "^9.4.1",
     "p-limit": "^7.3.0",
     "posthog-node": "^5.38.2",
     "web-tree-sitter": "^0.20.8"
