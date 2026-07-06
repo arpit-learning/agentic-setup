@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import fs from 'fs';
-import select from '@inquirer/select';
+import * as p from '@clack/prompts';
 import { createTwoFilesPatch } from 'diff';
 import { detectAvailableEditors, openDiffsInEditor } from './editor.js';
 import type { ReviewMethod } from './editor.js';
@@ -17,13 +17,18 @@ interface FileInfo {
 
 export async function promptWantsReview(): Promise<boolean> {
   if (!process.stdin.isTTY) return false;
-  return select({
+  const result = await p.select({
     message: 'Would you like to review the diffs before deciding?',
-    choices: [
-      { name: 'Yes, show me the diffs', value: true },
-      { name: 'No, continue', value: false },
+    options: [
+      { label: 'Yes, show me the diffs', value: true },
+      { label: 'No, continue', value: false },
     ],
   });
+  if (p.isCancel(result)) {
+    p.cancel('Cancelled.');
+    throw new Error('__exit__');
+  }
+  return result as boolean;
 }
 
 export async function promptReviewMethod(): Promise<ReviewMethod> {
@@ -31,18 +36,26 @@ export async function promptReviewMethod(): Promise<ReviewMethod> {
   if (available.length === 1) return 'terminal';
   if (!process.stdin.isTTY) return 'terminal';
 
-  const choices = available.map((method) => {
+  const options = available.map((method) => {
     switch (method) {
       case 'cursor':
-        return { name: 'Cursor (diff view)', value: 'cursor' as const };
+        return { label: 'Cursor (diff view)', value: 'cursor' as const };
       case 'vscode':
-        return { name: 'VS Code (diff view)', value: 'vscode' as const };
+        return { label: 'VS Code (diff view)', value: 'vscode' as const };
       case 'terminal':
-        return { name: 'Terminal', value: 'terminal' as const };
+        return { label: 'Terminal', value: 'terminal' as const };
     }
   });
 
-  return select({ message: 'How would you like to review the changes?', choices });
+  const result = await p.select({
+    message: 'How would you like to review the changes?',
+    options,
+  });
+  if (p.isCancel(result)) {
+    p.cancel('Cancelled.');
+    throw new Error('__exit__');
+  }
+  return result as ReviewMethod;
 }
 
 export async function openReview(method: ReviewMethod, stagedFiles: StagedFile[]): Promise<void> {

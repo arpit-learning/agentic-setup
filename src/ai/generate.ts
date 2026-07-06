@@ -21,12 +21,12 @@ interface GenerateCallbacks {
   onContent?: (text: string) => void;
 }
 
-interface SkillTopic {
+export interface SkillTopic {
   name: string;
   description: string;
 }
 
-interface GeneratedSkill {
+export interface GeneratedSkill {
   name: string;
   description: string;
   content: string;
@@ -365,7 +365,7 @@ function getDefaultSkillTopics(fingerprint: Fingerprint): SkillTopic[] {
   return topics;
 }
 
-function buildSkillContext(
+export function buildSkillContext(
   fingerprint: Fingerprint,
   setup: Record<string, unknown>,
   allDeps: string[],
@@ -412,7 +412,7 @@ function buildSkillContext(
   return parts.join('\n');
 }
 
-async function generateSkill(
+export async function generateSkill(
   context: string,
   topic: SkillTopic,
   model?: string,

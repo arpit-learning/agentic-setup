@@ -9,8 +9,9 @@ coverage/
 npm-debug.log*
 *.tsbuildinfo
 
-# agentic-setup local state
-.agentic-setup/
+.agentic-setup/*
+!.agentic-setup/score.json
+!.agentic-setup/score-history.jsonl
 
 *.pdf
 

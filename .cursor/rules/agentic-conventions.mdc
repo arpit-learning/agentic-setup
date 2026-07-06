@@ -2,8 +2,7 @@
 description: agentic-setup project conventions for TypeScript CLI development
 alwaysApply: true
 ---
-- ESM imports require `.js` extensions.
-- `unknown` over `any` — ESLint warns on explicit any.
-- Tests mirror `src/` layout, global setup in `tests/setup.ts`.
+- Relative imports must end with `.js` extensions.
+- Use `unknown` instead of `any` for type safety.
 - Run tests: `npm run test` or `npx vitest run tests/scoring/accuracy.test.ts`.
-- Conventional commits: `feat:`, `fix:`, `refactor:`.
+- Conventional commits format: `feat:`, `fix:`, `refactor:`.

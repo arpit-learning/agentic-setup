@@ -35,14 +35,14 @@ describe('cli command registration', () => {
         'setup',
         'check',
         'ci',
+        'skills',
       ]),
     );
   });
 
-  it('does not register removed skill/bootstrap commands', () => {
+  it('does not register removed bootstrap command', () => {
     const names = program.commands.map((c) => c.name());
     expect(names).not.toContain('bootstrap');
-    expect(names).not.toContain('skills');
   });
 
   it('registers --print-timeout as a global option', () => {
