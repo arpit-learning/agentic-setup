@@ -100,15 +100,34 @@ PRIORITY WHEN CONSTRAINTS CONFLICT: Grounding and reference density matter more 
 Note: Permissions, hooks, and freshness tracking are scored automatically by agentic-setup — do not optimize for them.
 README.md is provided for context only — do NOT include a readmeMd field in your output.`;
 
-const OUTPUT_SIZE_CONSTRAINTS = `OUTPUT SIZE CONSTRAINTS — these are critical:
-- CLAUDE.md / AGENTS.md: MUST be under 400 lines for maximum score. Aim for 200-350 lines. Be thorough — commands, architecture overview, key conventions, data flow, and important patterns. Use bullet points and tables, not prose.
+const OUTPUT_SIZE_CONSTRAINTS = `OUTPUT SIZE CONSTRAINTS & REQUIRED CONTENT — these are critical:
+- CLAUDE.md / AGENTS.md / .github/copilot-instructions.md: MUST be under 400 lines for maximum score. Aim for 250-380 lines. To generate rich project context, you MUST include the following structured sections:
+  1. **Commands & Dev Operations**: Use code blocks (one command per line) and tables to document:
+     - Environment setup / bootstrap / package installation commands (use the detected commands under Programmatic Project Context if available)
+     - Database migration, seeding, or setup commands (if applicable)
+     - Dev / run / startup commands with common flags and options
+     - Pre-submit validation chains (e.g. lint → typecheck → test) and test-specific flags
+  2. **Detailed Architecture Overview & Component Mapping**:
+     - Key entry points and primary data flows (e.g. from routing to handlers to DB)
+     - Main directories and module mappings (e.g. \`src/controllers/\`, \`src/models/\`) with concrete responsibilities
+     - Key config and structural files (e.g. \`package.json\`, \`tsconfig.json\`, \`.env.example\`)
+  3. **Environment Prerequisites & Setup Requirements**:
+     - Required environment variables (list keys/placeholders, NO values/secrets; use those found under Programmatic Project Context)
+     - Local environment dependencies (e.g. Docker, specific DB engine, package manager, node/python runtime version)
+     - Template/example config file references (e.g. \`.env.example\`)
+     - Development health/validation endpoints (e.g. \`localhost:3000/health\`)
+  4. **Agent Workflow & Intent/Code Change Routing**:
+     - Intent routing: Map common tasks/intents (e.g. adding routes, writing tests) to target modules or rules
+     - Code change routing: Step-by-step verification flows (e.g. run lint, build, and tests before committing changes)
+     - Deviation and validation rules (e.g. "if DB schema changes, regenerate client")
+  5. **Conventions**: styling, Conventional Commits patterns, error envelope formats, etc.
 
 Pack project references densely in architecture sections — use inline paths, not prose paragraphs:
 GOOD: **Entry**: \`src/bin.ts\` → \`src/cli.ts\` · **LLM** (\`src/llm/\`): \`anthropic.ts\` · \`vertex.ts\` · \`openai-compat.ts\`
 BAD: The entry point of the application is located in the src directory. The LLM module handles different providers.
 For command sections, use code blocks with one command per line.
 
-- Cursor rules: max 5 .mdc files.
+- Cursor rules (.cursor/rules/*.mdc): max 5 files. Tailor rules to enforce matching path-scoped conventions, setup requirements, and intent routing workflows.
 - If the project is large, prioritize depth on the 3-4 most critical tools over breadth across everything.
 
 @include directives (Claude Code only):
@@ -296,7 +315,8 @@ Quality constraints — your changes are scored, so do not break these:
 - Do NOT remove existing code blocks — they contribute to the executable content score.
 - Use backticks for every file path, command, and identifier.
 - Keep skill content under 150 lines, focused on actionable instructions.
-- Only reference file paths that actually exist in the project.`;
+- Only reference file paths that actually exist in the project.
+- Preserve and enrich detailed project context sections: Dev/Commands, Architecture Overview, Environment Prerequisites, and Agent/Intent/Code Change routing.`;
 
 export const REFRESH_SYSTEM_PROMPT = `You are an expert at maintaining coding project documentation. Your job is to apply minimal, surgical updates to existing documentation files based on code changes (git diffs).
 
