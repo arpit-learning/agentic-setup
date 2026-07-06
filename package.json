@@ -1,6 +1,6 @@
 {
   "name": "@arpit-pm1/agentic-setup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Make any repository agentic-ready — AI context sync, Codegraph analysis, and readiness scoring",
   "type": "module",
   "bin": {
