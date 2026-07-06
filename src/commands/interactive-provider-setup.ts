@@ -1,6 +1,5 @@
 import chalk from 'chalk';
-import select from '@inquirer/select';
-import confirm from '@inquirer/confirm';
+import * as p from '@clack/prompts';
 import { writeConfigFile, DEFAULT_MODELS } from '../llm/config.js';
 import type { ProviderType, LLMConfig } from '../llm/types.js';
 import {
@@ -36,11 +35,17 @@ export async function runInteractiveProviderSetup(options?: {
   selectMessage?: string;
 }): Promise<LLMConfig> {
   const message = options?.selectMessage ?? 'Select LLM provider';
-  const provider = await select<ProviderType>({
+  const resultProvider = await p.select({
     message,
-    choices: PROVIDER_CHOICES,
+    options: PROVIDER_CHOICES.map((c) => ({ label: c.name, value: c.value })),
   });
 
+  if (p.isCancel(resultProvider)) {
+    p.cancel('Cancelled.');
+    throw new Error('__exit__');
+  }
+
+  const provider = resultProvider as ProviderType;
   const config: LLMConfig = { provider, model: '' };
 
   switch (provider) {
@@ -57,15 +62,15 @@ export async function runInteractiveProviderSetup(options?: {
             chalk.hex('#83D1EB')('claude') +
             chalk.dim(' once to log in.\n'),
         );
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
+        const proceed = await p.confirm({ message: 'Continue anyway?' });
+        if (p.isCancel(proceed) || !proceed) throw new Error('__exit__');
       } else if (!isClaudeCliLoggedIn()) {
         console.log(chalk.yellow('\n  Claude Code CLI found but not logged in.'));
         console.log(
           chalk.dim('  Run ') + chalk.hex('#83D1EB')('claude') + chalk.dim(' once to log in.\n'),
         );
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
+        const proceed = await p.confirm({ message: 'Continue anyway?' });
+        if (p.isCancel(proceed) || !proceed) throw new Error('__exit__');
       } else {
         console.log(
           chalk.dim(
@@ -84,8 +89,8 @@ export async function runInteractiveProviderSetup(options?: {
             chalk.hex('#83D1EB')('opencode auth login') +
             chalk.dim(' to authenticate.\n'),
         );
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
+        const proceed = await p.confirm({ message: 'Continue anyway?' });
+        if (p.isCancel(proceed) || !proceed) throw new Error('__exit__');
       } else if (!isOpenCodeLoggedIn()) {
         console.log(chalk.yellow('\n  OpenCode CLI found but not logged in.'));
         console.log(
@@ -93,8 +98,8 @@ export async function runInteractiveProviderSetup(options?: {
             chalk.hex('#83D1EB')('opencode auth login') +
             chalk.dim(' to authenticate.\n'),
         );
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
+        const proceed = await p.confirm({ message: 'Continue anyway?' });
+        if (p.isCancel(proceed) || !proceed) throw new Error('__exit__');
       }
       config.model =
         (await promptInput(`Model (default: ${DEFAULT_MODELS.opencode}):`)) ||
@@ -110,8 +115,8 @@ export async function runInteractiveProviderSetup(options?: {
             chalk.hex('#83D1EB')('agy') +
             chalk.dim(' once to authenticate via your Google account.\n'),
         );
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
+        const proceed = await p.confirm({ message: 'Continue anyway?' });
+        if (p.isCancel(proceed) || !proceed) throw new Error('__exit__');
       }
 
       const defaultProject =
@@ -124,22 +129,27 @@ export async function runInteractiveProviderSetup(options?: {
         defaultProject ||
         undefined;
 
-      const modelChoice = await select<string>({
+      const modelChoice = await p.select({
         message: 'Select model',
-        choices: [
-          { name: 'default (Default IDE Model)', value: 'default' },
-          { name: 'pro (Gemini Pro)', value: 'pro' },
-          { name: 'flash (Gemini Flash)', value: 'flash' },
-          { name: 'flash_lite (Gemini Flash Lite)', value: 'flash_lite' },
-          { name: 'Custom model name...', value: 'custom' },
+        options: [
+          { label: 'default (Default IDE Model)', value: 'default' },
+          { label: 'pro (Gemini Pro)', value: 'pro' },
+          { label: 'flash (Gemini Flash)', value: 'flash' },
+          { label: 'flash_lite (Gemini Flash Lite)', value: 'flash_lite' },
+          { label: 'Custom model name...', value: 'custom' },
         ],
-        default: 'default',
+        initialValue: 'default',
       });
+
+      if (p.isCancel(modelChoice)) {
+        p.cancel('Cancelled.');
+        throw new Error('__exit__');
+      }
 
       if (modelChoice === 'custom') {
         config.model = (await promptInput('Model name (e.g. gemini-2.5-pro):')) || 'default';
       } else {
-        config.model = modelChoice;
+        config.model = modelChoice as string;
       }
       break;
     }
@@ -167,8 +177,8 @@ export async function runInteractiveProviderSetup(options?: {
               chalk.dim(' to authenticate.\n'),
           );
         }
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
+        const proceed = await p.confirm({ message: 'Continue anyway?' });
+        if (p.isCancel(proceed) || !proceed) throw new Error('__exit__');
       } else if (!isCursorLoggedIn()) {
         console.log(chalk.yellow('\n  Cursor Agent CLI found but not logged in.'));
         console.log(
@@ -176,8 +186,8 @@ export async function runInteractiveProviderSetup(options?: {
             chalk.hex('#83D1EB')('agent login') +
             chalk.dim(' to authenticate.\n'),
         );
-        const proceed = await confirm({ message: 'Continue anyway?' });
-        if (!proceed) throw new Error('__exit__');
+        const proceed = await p.confirm({ message: 'Continue anyway?' });
+        if (p.isCancel(proceed) || !proceed) throw new Error('__exit__');
       }
       let cursorModels: string[] = [];
       try {
@@ -186,16 +196,16 @@ export async function runInteractiveProviderSetup(options?: {
         // listing unavailable — fall through to free-text
       }
       if (cursorModels.length > 0) {
-        const defaultIdx = cursorModels.indexOf(DEFAULT_MODELS.cursor);
-        const choices = cursorModels.map((m, i) => ({
-          name: i === defaultIdx ? `${m} (default)` : m,
-          value: m,
-        }));
-        config.model = await select<string>({
+        const resultModel = await p.select({
           message: 'Select model',
-          choices,
-          default: DEFAULT_MODELS.cursor,
+          options: cursorModels.map((m) => ({ label: m, value: m })),
+          initialValue: DEFAULT_MODELS.cursor,
         });
+        if (p.isCancel(resultModel)) {
+          p.cancel('Cancelled.');
+          throw new Error('__exit__');
+        }
+        config.model = resultModel as string;
       } else {
         config.model =
           (await promptInput(`Model (default: ${DEFAULT_MODELS.cursor}):`)) ||

@@ -35,6 +35,12 @@ import { compositeScoreCommand } from './commands/composite-score.js';
 import { setupCommand } from './commands/setup.js';
 import { checkCommand } from './commands/check.js';
 import { ciInitCommand } from './commands/ci.js';
+import {
+  skillsListCommand,
+  skillsGenerateCommand,
+  skillsAddCommand,
+  skillsDeleteCommand,
+} from './commands/skills.js';
 import { setTelemetryDisabled } from './telemetry/config.js';
 import { initTelemetry, trackEvent } from './telemetry/index.js';
 import { checkPendingNotifications } from './lib/notifications.js';
@@ -295,6 +301,45 @@ program
   .command('publish')
   .description('Generate a machine-readable summary for other repos to consume')
   .action(tracked('publish', publishCommand));
+
+const skills = program
+  .command('skills')
+  .description('Manage agent skills — dynamic generation and custom guidelines');
+
+skills
+  .command('list')
+  .description('List all active skills across configured agents')
+  .action(tracked('skills:list', skillsListCommand));
+
+skills
+  .command('generate')
+  .alias('gen')
+  .description('Dynamically generate stack-specific skills based on project context')
+  .option(
+    '--agent <type>',
+    'Target agents (comma-separated): claude, cursor, codex, opencode, github-copilot',
+    parseAgentOption,
+  )
+  .option('--dry-run', 'Preview changes without writing files')
+  .option('--auto-approve', 'Generate all proposed skills without interactive selection')
+  .action(tracked('skills:generate', skillsGenerateCommand));
+
+skills
+  .command('add')
+  .description('Add a custom skill to all active agents')
+  .argument('[name]', 'Name of the skill (e.g. react-hooks)')
+  .argument('[description]', 'Short description of what the skill covers')
+  .action(
+    tracked('skills:add', (name, description, options) =>
+      skillsAddCommand(name, description, options),
+    ),
+  );
+
+skills
+  .command('delete')
+  .description('Remove a skill from active agent directories')
+  .argument('[name]', 'Name of the skill to delete')
+  .action(tracked('skills:delete', (name) => skillsDeleteCommand(name)));
 
 const learn = program
   .command('learn')

@@ -31,7 +31,7 @@ import { isClaudeCliAvailable, isClaudeCliLoggedIn } from '../llm/claude-cli.js'
 import { isCursorAgentAvailable, isCursorLoggedIn } from '../llm/cursor-acp.js';
 import { isOpenCodeAvailable } from '../llm/opencode.js';
 import { formatValidationError } from '../utils/validation-messages.js';
-import confirm from '@inquirer/confirm';
+import * as p from '@clack/prompts';
 import { computeLocalScore } from '../scoring/index.js';
 import { displayScoreDelta, displayScoreSummary } from '../scoring/display.js';
 import { readDismissedChecks, writeDismissedChecks } from '../scoring/dismissed.js';
@@ -113,22 +113,18 @@ async function handleValidationError(
     return 'skip';
   }
 
-  const { default: select } = await import('@inquirer/select');
-  const choice = await select({
+  const result = await p.select({
     message: 'How would you like to proceed?',
-    choices: error.recoveryOptions.map((opt: (typeof error.recoveryOptions)[number]) => ({
-      name: opt.label,
+    options: error.recoveryOptions.map((opt: (typeof error.recoveryOptions)[number]) => ({
+      label: opt.label,
       value: opt.action,
-      description:
-        opt.action === 'fix-now'
-          ? 'Run agentic-setup config'
-          : opt.action === 'switch-provider'
-            ? 'Choose a different provider'
-            : opt.action === 'skip'
-              ? 'Proceed with file analysis only'
-              : 'Exit and abort setup',
     })),
   });
+  if (p.isCancel(result)) {
+    p.cancel('Cancelled.');
+    throw new Error('__exit__');
+  }
+  const choice = result as 'fix-now' | 'switch-provider' | 'skip' | 'exit';
 
   return choice as 'fix-now' | 'switch-provider' | 'skip' | 'exit';
 }
@@ -201,10 +197,13 @@ export async function initCommand(options: InitOptions) {
   // If a config exists, confirm it if we're not auto-approving
   if (config && !options.autoApprove) {
     const displayModel = getDisplayModel(config);
-    const useExisting = await confirm({
+    const useExisting = await p.confirm({
       message: `Use ${config.provider} (${displayModel}) as your LLM provider?`,
-      default: true,
     });
+    if (p.isCancel(useExisting)) {
+      p.cancel('Cancelled.');
+      throw new Error('__exit__');
+    }
     if (!useExisting) {
       await runInteractiveProviderSetup({
         selectMessage: 'How do you want to use agentic-setup? (choose LLM provider)',
@@ -221,7 +220,11 @@ export async function initCommand(options: InitOptions) {
     // Try seat-based auto-detection
     if (isClaudeCliAvailable() && isClaudeCliLoggedIn()) {
       console.log(chalk.dim('  Detected: Claude Code CLI (uses your Pro/Max/Team subscription)\n'));
-      const useIt = await confirm({ message: 'Use Claude Code as your LLM provider?' });
+      const useIt = await p.confirm({ message: 'Use Claude Code as your LLM provider?' });
+      if (p.isCancel(useIt)) {
+        p.cancel('Cancelled.');
+        throw new Error('__exit__');
+      }
       if (useIt) {
         const autoConfig = { provider: 'claude-cli' as const, model: 'default' };
         writeConfigFile(autoConfig);
@@ -229,7 +232,11 @@ export async function initCommand(options: InitOptions) {
       }
     } else if (isCursorAgentAvailable() && isCursorLoggedIn()) {
       console.log(chalk.dim('  Detected: Cursor (uses your existing subscription)\n'));
-      const useIt = await confirm({ message: 'Use Cursor as your LLM provider?' });
+      const useIt = await p.confirm({ message: 'Use Cursor as your LLM provider?' });
+      if (p.isCancel(useIt)) {
+        p.cancel('Cancelled.');
+        throw new Error('__exit__');
+      }
       if (useIt) {
         const autoConfig = { provider: 'cursor' as const, model: 'sonnet-4.6' };
         writeConfigFile(autoConfig);
@@ -289,10 +296,13 @@ export async function initCommand(options: InitOptions) {
   const agentAutoDetected = !options.agent;
   if (options.agent) {
     if (!options.autoApprove) {
-      const useProvided = await confirm({
+      const useProvided = await p.confirm({
         message: `Generate configs for these agents: ${options.agent.join(', ')}?`,
-        default: true,
       });
+      if (p.isCancel(useProvided)) {
+        p.cancel('Cancelled.');
+        throw new Error('__exit__');
+      }
       targetAgent = useProvided ? options.agent : await promptAgent();
     } else {
       targetAgent = options.agent;
@@ -304,7 +314,11 @@ export async function initCommand(options: InitOptions) {
       console.log(chalk.dim(`  Coding agents in this repo: ${detected.join(', ')}\n`));
     } else if (detected.length > 0) {
       console.log(chalk.dim(`  Coding agents in this repo: ${detected.join(', ')}\n`));
-      const useDetected = await confirm({ message: 'Generate configs for these agents?' });
+      const useDetected = await p.confirm({ message: 'Generate configs for these agents?' });
+      if (p.isCancel(useDetected)) {
+        p.cancel('Cancelled.');
+        throw new Error('__exit__');
+      }
       targetAgent = useDetected ? detected : await promptAgent();
     } else {
       targetAgent = options.autoApprove ? ['claude'] : await promptAgent();

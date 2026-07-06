@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { execSync, execFileSync } from 'child_process';
 import chalk from 'chalk';
 import ora from 'ora';
-import confirm from '@inquirer/confirm';
+import * as p from '@clack/prompts';
 
 const __dirname_vc = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname_vc, '..', 'package.json'), 'utf-8'));
@@ -89,11 +89,10 @@ export async function checkForUpdates(): Promise<void> {
 
     console.log(chalk.yellow(`\nUpdate available: ${current} -> ${latest}`));
 
-    const shouldUpdate = await confirm({
-      message: 'Would you like to update now? (Y/n)',
-      default: true,
+    const shouldUpdate = await p.confirm({
+      message: 'Would you like to update now?',
     });
-    if (!shouldUpdate) {
+    if (p.isCancel(shouldUpdate) || !shouldUpdate) {
       console.log();
       return;
     }

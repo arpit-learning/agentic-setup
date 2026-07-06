@@ -418,7 +418,7 @@ if ${guard}; then
   echo "\\033[2magentic-setup: refreshing docs...\\033[0m"
   ${invoke} refresh --quiet 2>.agentic-setup/refresh-hook.log || echo "\\033[33magentic-setup: refresh skipped — see .agentic-setup/refresh-hook.log\\033[0m" >&2
   ${invoke} learn finalize 2>>.agentic-setup/refresh-hook.log || true
-  git diff --name-only -- CLAUDE.md .claude/ .cursor/ AGENTS.md AGENTIC_LEARNINGS.md .github/ .agents/ .opencode/ 2>/dev/null | xargs git add 2>/dev/null || true
+  git diff --name-only -- CLAUDE.md .claude/ .cursor/ AGENTS.md AGENTIC_LEARNINGS.md .github/ .agents/ .opencode/ .agentic-setup/score.json .agentic-setup/score-history.jsonl 2>/dev/null | xargs git add 2>/dev/null || true
 fi
 ${PRECOMMIT_END}`;
 }

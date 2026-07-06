@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
-import confirm from '@inquirer/confirm';
+import * as p from '@clack/prompts';
 import {
   removePreCommitHook,
   removeStopHook,
@@ -67,7 +67,7 @@ function removeDirectory(dir: string): boolean {
 }
 
 export async function uninstallCommand(options: UninstallOptions) {
-  console.log(chalk.bold('\n  agentic-setup Uninstall\n'));
+  p.intro(chalk.cyan.bold('Uninstall agentic-setup'));
   console.log(chalk.dim('  This will remove all agentic-setup resources from this project:\n'));
   console.log(chalk.dim('    • Pre-commit hook'));
   console.log(chalk.dim('    • Session learning hooks'));
@@ -77,9 +77,9 @@ export async function uninstallCommand(options: UninstallOptions) {
   console.log(chalk.dim('    • .agentic-setup/ directory (backups, cache, state)\n'));
 
   if (!options.force) {
-    const proceed = await confirm({ message: 'Continue with uninstall?' });
-    if (!proceed) {
-      console.log(chalk.dim('\n  Cancelled.\n'));
+    const proceed = await p.confirm({ message: 'Continue with uninstall?' });
+    if (p.isCancel(proceed) || !proceed) {
+      p.cancel('Cancelled.');
       return;
     }
   }
@@ -164,11 +164,17 @@ export async function uninstallCommand(options: UninstallOptions) {
   const configPath = getConfigFilePath();
   if (fs.existsSync(configPath)) {
     console.log('');
-    const removeConfig =
-      options.force ||
-      (await confirm({
+    let removeConfig = false;
+    if (options.force) {
+      removeConfig = true;
+    } else {
+      const result = await p.confirm({
         message: `Remove global config (~/.agentic-setup/config.json)? This affects all projects.`,
-      }));
+      });
+      if (!p.isCancel(result)) {
+        removeConfig = result;
+      }
+    }
     if (removeConfig) {
       fs.unlinkSync(configPath);
       console.log(`  ${chalk.red('✗')} ${configPath}`);
@@ -182,8 +188,5 @@ export async function uninstallCommand(options: UninstallOptions) {
     }
   }
 
-  console.log(chalk.bold.green(`\n  agentic-setup has been removed from this project.`));
-  console.log(
-    chalk.dim('  Your code is untouched — only agentic-setup config files were removed.\n'),
-  );
+  p.outro(chalk.bold.green('agentic-setup has been removed from this project.'));
 }

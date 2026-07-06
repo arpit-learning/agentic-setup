@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import select from '@inquirer/select';
+import * as p from '@clack/prompts';
 import { writeConfigFile } from './config.js';
 import type { LLMConfig, LLMProvider, ProviderType } from './types.js';
 import { displayProductName } from '../lib/resolve-cli.js';
@@ -150,10 +150,14 @@ export async function handleModelNotAvailable(
   let selected: string;
   pauseActiveTaskDisplayForPrompt();
   try {
-    selected = await select<string>({
+    const result = await p.select({
       message: 'Pick an available model',
-      choices: models.map((m) => ({ name: m, value: m })),
+      options: models.map((m) => ({ label: m, value: m })),
     });
+    if (p.isCancel(result)) {
+      return null;
+    }
+    selected = result as string;
   } catch {
     // User cancelled (Ctrl+C)
     return null;

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import select from '@inquirer/select';
+import * as p from '@clack/prompts';
 import { collectFingerprint } from '../fingerprint/index.js';
 import { generateSetup } from '../ai/generate.js';
 import { writeSetup, undoSetup } from '../writers/index.js';
@@ -20,6 +20,7 @@ import { displayProductName } from '../lib/resolve-cli.js';
 import { isDebugMode } from '../lib/debug.js';
 
 export async function regenerateCommand(options: { dryRun?: boolean }) {
+  p.intro(chalk.cyan.bold('Regenerate Config'));
   const bin = displayProductName();
   const config = loadConfig();
   if (!config) {
@@ -138,13 +139,20 @@ export async function regenerateCommand(options: { dryRun?: boolean }) {
     await openReview(reviewMethod, staged.stagedFiles);
   }
 
-  const action = await select({
+  const result = await p.select({
     message: 'Apply regenerated config?',
-    choices: [
-      { name: 'Accept and apply', value: 'accept' as const },
-      { name: 'Decline', value: 'decline' as const },
+    options: [
+      { label: 'Accept and apply', value: 'accept' as const },
+      { label: 'Decline', value: 'decline' as const },
     ],
   });
+
+  if (p.isCancel(result)) {
+    p.cancel('Cancelled.');
+    cleanupStaging();
+    return;
+  }
+  const action = result;
 
   cleanupStaging();
 
@@ -217,7 +225,7 @@ export async function regenerateCommand(options: { dryRun?: boolean }) {
   displayScoreDelta(baselineScore, afterScore);
 
   trackRegenerateCompleted(action, Date.now());
-  console.log(chalk.bold.green('  Regeneration complete!'));
+  p.outro(chalk.bold.green('Regeneration complete!'));
   console.log(
     chalk.dim('  Run ') + chalk.hex('#83D1EB')(`${bin} undo`) + chalk.dim(' to revert changes.\n'),
   );

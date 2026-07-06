@@ -2,7 +2,6 @@
 paths:
   - src/scoring/**
 ---
-# Scoring Check Patterns
-- All checks are deterministic — no LLM/network calls.
-- Return `Check[]` from `src/scoring/checks/` files.
-- Scoring constants in `src/scoring/constants.ts`.
+# Scoring Checks
+- Checks must be deterministic and return `Check[]` from `src/scoring/checks/`.
+- Shared scoring constants are configured in `src/scoring/constants.ts`.
