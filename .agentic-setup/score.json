@@ -1,0 +1,329 @@
+{
+  "score": 93,
+  "maxScore": 100,
+  "grade": "A",
+  "checks": [
+    {
+      "id": "claude_md_exists",
+      "name": "CLAUDE.md exists",
+      "category": "existence",
+      "maxPoints": 6,
+      "earnedPoints": 6,
+      "passed": true,
+      "detail": "Found at project root"
+    },
+    {
+      "id": "claude_rules_exist",
+      "name": "Claude rules exist (.claude/rules/)",
+      "category": "existence",
+      "maxPoints": 3,
+      "earnedPoints": 3,
+      "passed": true,
+      "detail": "3 rules found"
+    },
+    {
+      "id": "cursor_rules_exist",
+      "name": "Cursor rules exist",
+      "category": "existence",
+      "maxPoints": 3,
+      "earnedPoints": 3,
+      "passed": true,
+      "detail": ".cursor/rules/ found"
+    },
+    {
+      "id": "codex_agents_md_exists",
+      "name": "AGENTS.md exists",
+      "category": "existence",
+      "maxPoints": 6,
+      "earnedPoints": 6,
+      "passed": true,
+      "detail": "Found at project root"
+    },
+    {
+      "id": "copilot_instructions_exists",
+      "name": "Copilot instructions exist",
+      "category": "existence",
+      "maxPoints": 6,
+      "earnedPoints": 6,
+      "passed": true,
+      "detail": "Found at .github/copilot-instructions.md"
+    },
+    {
+      "id": "antigravity_config_exists",
+      "name": "Antigravity IDE config exists",
+      "category": "existence",
+      "maxPoints": 6,
+      "earnedPoints": 6,
+      "passed": true,
+      "detail": "Found .gemini/"
+    },
+    {
+      "id": "cursor_mdc_rules",
+      "name": "Cursor .mdc rules",
+      "category": "existence",
+      "maxPoints": 3,
+      "earnedPoints": 3,
+      "passed": true,
+      "detail": "6 .mdc rules found"
+    },
+    {
+      "id": "mcp_servers",
+      "name": "MCP servers configured",
+      "category": "existence",
+      "maxPoints": 3,
+      "earnedPoints": 3,
+      "passed": true,
+      "detail": "1 server in .cursor/mcp.json"
+    },
+    {
+      "id": "cross_platform_parity",
+      "name": "Cross-platform parity",
+      "category": "existence",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "Both Claude Code and Cursor configured"
+    },
+    {
+      "id": "has_executable_content",
+      "name": "Executable content (code blocks)",
+      "category": "quality",
+      "maxPoints": 8,
+      "earnedPoints": 8,
+      "passed": true,
+      "detail": "6 code blocks found"
+    },
+    {
+      "id": "concise_config",
+      "name": "Concise config (token budget)",
+      "category": "quality",
+      "maxPoints": 6,
+      "earnedPoints": 6,
+      "passed": true,
+      "detail": "~3046 tokens total across all config files"
+    },
+    {
+      "id": "concreteness",
+      "name": "Concrete instructions",
+      "category": "quality",
+      "maxPoints": 4,
+      "earnedPoints": 3,
+      "passed": true,
+      "detail": "67% of lines reference specific files, paths, or code"
+    },
+    {
+      "id": "no_directory_tree",
+      "name": "No directory tree listings",
+      "category": "quality",
+      "maxPoints": 3,
+      "earnedPoints": 3,
+      "passed": true,
+      "detail": "No large directory trees found"
+    },
+    {
+      "id": "no_duplicate_content",
+      "name": "No duplicate content across files",
+      "category": "quality",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "Only one context file (no duplication possible)"
+    },
+    {
+      "id": "has_structure",
+      "name": "Structured with headings",
+      "category": "quality",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "7 sections, 18 list items"
+    },
+    {
+      "id": "agents_md_spec",
+      "name": "AGENTS.md spec sections",
+      "category": "quality",
+      "maxPoints": 3,
+      "earnedPoints": 1,
+      "passed": false,
+      "detail": "setup:false test:false conventions:true",
+      "suggestion": "AGENTS.md should include Setup, Testing, and Conventions sections per agents.md guidance"
+    },
+    {
+      "id": "project_grounding",
+      "name": "Project grounding",
+      "category": "grounding",
+      "maxPoints": 12,
+      "earnedPoints": 9,
+      "passed": true,
+      "detail": "127/350 project entries referenced in config (36%)",
+      "suggestion": "Config doesn't mention: templates",
+      "fix": {
+        "action": "add_references",
+        "data": {
+          "missing": [
+            "templates"
+          ],
+          "mentioned": [
+            ".devin",
+            ".gemini",
+            ".github",
+            ".husky",
+            ".idea",
+            ".vscode",
+            ".windsurf",
+            "docs",
+            "scripts",
+            "src"
+          ],
+          "totalEntries": 350,
+          "coverage": 36
+        },
+        "instruction": "Reference these project directories in your config: templates"
+      }
+    },
+    {
+      "id": "reference_density",
+      "name": "Reference density",
+      "category": "grounding",
+      "maxPoints": 8,
+      "earnedPoints": 8,
+      "passed": true,
+      "detail": "1307 specific references across 1902 lines (69%)"
+    },
+    {
+      "id": "references_valid",
+      "name": "References point to real files",
+      "category": "accuracy",
+      "maxPoints": 8,
+      "earnedPoints": 8,
+      "passed": true,
+      "detail": "4/4 references verified"
+    },
+    {
+      "id": "config_drift",
+      "name": "Config freshness vs code",
+      "category": "accuracy",
+      "maxPoints": 7,
+      "earnedPoints": 7,
+      "passed": true,
+      "detail": "Config is up to date with latest commits"
+    },
+    {
+      "id": "claude_md_freshness",
+      "name": "Config freshness",
+      "category": "freshness",
+      "maxPoints": 4,
+      "earnedPoints": 4,
+      "passed": true,
+      "detail": "Config updated in the latest commit"
+    },
+    {
+      "id": "no_secrets",
+      "name": "No secrets in config files",
+      "category": "freshness",
+      "earnedPoints": 4,
+      "maxPoints": 4,
+      "passed": true,
+      "detail": "No secrets detected"
+    },
+    {
+      "id": "permissions_configured",
+      "name": "Permissions configured",
+      "category": "freshness",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "3 permissions configured"
+    },
+    {
+      "id": "hooks_configured",
+      "name": "Hooks configured",
+      "category": "bonus",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "Claude Code: SessionEnd, PostToolUse, PostToolUseFailure, UserPromptSubmit, Stop, SessionStart, Notification, git pre-commit, config pre-commit instruction"
+    },
+    {
+      "id": "learned_content",
+      "name": "Learned content present",
+      "category": "bonus",
+      "maxPoints": 2,
+      "earnedPoints": 0,
+      "passed": false,
+      "detail": "No learned content",
+      "suggestion": "Session learnings capture patterns from your coding sessions so the agent improves over time. Run `agentic-setup learn install`"
+    },
+    {
+      "id": "skills_configured",
+      "name": "Skills configured",
+      "category": "bonus",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "39 skills with SKILL.md"
+    },
+    {
+      "id": "model_pinned",
+      "name": "Model & effort pinned",
+      "category": "bonus",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "Model or effort level explicitly set in config"
+    },
+    {
+      "id": "run_md_present",
+      "name": "run.md local dev guide",
+      "category": "bonus",
+      "maxPoints": 2,
+      "earnedPoints": 2,
+      "passed": true,
+      "detail": "run.md documents startup and health checks"
+    },
+    {
+      "id": "sources_configured",
+      "name": "External sources configured",
+      "category": "bonus",
+      "maxPoints": 0,
+      "earnedPoints": 0,
+      "passed": false,
+      "detail": "No external sources configured",
+      "suggestion": "Run `agentic-setup sources add <path>` to add related repos or docs"
+    }
+  ],
+  "categories": {
+    "existence": {
+      "earned": 38,
+      "max": 38
+    },
+    "quality": {
+      "earned": 25,
+      "max": 28
+    },
+    "grounding": {
+      "earned": 17,
+      "max": 20
+    },
+    "accuracy": {
+      "earned": 15,
+      "max": 15
+    },
+    "freshness": {
+      "earned": 10,
+      "max": 10
+    },
+    "bonus": {
+      "earned": 8,
+      "max": 10
+    }
+  },
+  "targetAgent": [
+    "claude",
+    "cursor",
+    "codex",
+    "github-copilot",
+    "antigravity"
+  ],
+  "timestamp": "2026-07-06T12:08:52.563Z"
+}

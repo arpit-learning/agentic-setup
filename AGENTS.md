@@ -1,37 +1,45 @@
 # agentic-setup
 
+CLI tool to keep AI agent configs in sync with your codebase.
+
 ## Commands
+
 ```bash
 npm run build
+```
+
+```bash
 npm run dev
+```
+
+```bash
 npm run test
 ```
 
-To run linter:
 ```bash
 npm run lint
 ```
 
-To run type checks:
 ```bash
 npx tsc --noEmit
 ```
 
 ## Architecture
-**Entry**: `src/bin.ts` → `src/cli.ts`
-**Commands** (`src/commands/`): `init.ts` · `score.ts` · `refresh.ts` · `regenerate.ts` · `config.ts` · `hooks.ts` · `insights.ts` · `doctor.ts` · `codegraph.ts` · `analyze.ts`
-**LLM** (`src/llm/`): `anthropic.ts` · `vertex.ts` · `openai-compat.ts` · `cursor-acp.ts` · `claude-cli.ts` · `antigravity.ts` · `minimax.ts` · `types.ts` · `config.ts`
-**AI** (`src/ai/`): `generate.ts` · `refine.ts` · `refresh.ts` · `detect.ts` · `learn.ts`
-**Scoring** (`src/scoring/`): `index.ts` · Checks: `checks/existence.ts` · `checks/quality.ts` · `checks/grounding.ts` · `checks/accuracy.ts` · `checks/freshness.ts`
-**MCP**: uses `codegraph` MCP server in `.agents/codegraph.json`
-**Workspace Tooling**: `.vscode/` (contains: mcp.json), `.idea/` (contains: mcp.json), `.windsurf/` (contains: mcp.json), and `.devin/` (contains: mcp.json) configures workspace details.
-**Hooks & CLI Settings**: Git hooks managed under `.husky/` (contains: _, pre-commit) and global options in `.gemini/` (contains: config).
-**Docs & Automation**: Scoring guides in `docs/` (contains: SCORING.md) and repository helpers in `scripts/` (contains: generate-readme-badges.ts).
+- **Entry**: `src/bin.ts` · `src/cli.ts`
+- **Commands** (`src/commands/`): `init.ts` · `score.ts` · `refresh.ts` · `config.ts` · `hooks.ts` · `insights.ts` · `learn.ts` · `sources.ts` · `publish.ts` · `undo.ts` · `status.ts` · `doctor.ts` · `codegraph.ts` · `analyze.ts` · `composite-score.ts`
+- **LLM** (`src/llm/`): `anthropic.ts` · `vertex.ts` · `openai-compat.ts` · `cursor-acp.ts` · `claude-cli.ts` · `antigravity.ts` · `minimax.ts` · `types.ts` · `config.ts`
+- **AI** (`src/ai/`): `generate.ts` · `refine.ts` · `refresh.ts` · `detect.ts` · `learn.ts` · `score-refine.ts`
+- **Scoring** (`src/scoring/`): `index.ts` · Checks (`src/scoring/checks/`): `existence.ts` · `quality.ts` · `grounding.ts` · `accuracy.ts` · `freshness.ts` · `bonus.ts` · `sources.ts`
+- **Writers** (`src/writers/`): `index.ts` · `claude/index.ts` · `cursor/index.ts` · `codex/index.ts` · `opencode/index.ts` · `github-copilot/index.ts` · `refresh.ts` · `staging.ts` · `backup.ts`
+- **MCP**: uses `codegraph` MCP server configured in `.agents/codegraph.json`
+- **Workspace Configs**: `.vscode/` (contains `mcp.json`) · `.windsurf/` (contains `mcp.json`) · `.idea/` (contains `mcp.json`) · `.devin/` (contains `mcp.json`) · `.gemini/` (contains `config`, `rules`)
+- **Workflows & Docs**: `.github/` (contains `ISSUE_TEMPLATE`, `instructions`, `workflows`, `copilot-instructions.md`, `dependabot.yml`) · `.husky/` (contains `_`, `pre-commit`) · `docs/` (contains `SCORING.md`)
 
 ## Conventions
-- ESM imports require `.js` extensions.
-- Providers implement `LLMProvider` in `src/llm/types.ts`.
-- Pre-commit sync: run `agentic-setup refresh` if no hook active.
+- Relative imports must use `.js` extension (even in `.ts` files)
+- Use `unknown` instead of `any` for type safety
+- Providers must implement `LLMProvider` in `src/llm/types.ts`
+- Run `agentic-setup refresh` before commit if no hook
 
 <!-- agentic:managed:pre-commit -->
 ## Before Committing
@@ -46,7 +54,7 @@ grep -q "agentic-setup" .git/hooks/pre-commit 2>/dev/null && echo "hook-active" 
 - If **hook-active**: the hook handles sync automatically — just commit normally. Tell the user: "agentic-setup will sync your agent configs automatically via the pre-commit hook."
 - If **no-hook**: run agentic-setup manually before committing:
   1. Tell the user: "agentic-setup: Syncing agent configs with your latest changes..."
-  2. Run: `agentic-setup refresh && git add CLAUDE.md .claude/ .cursor/ .cursorrules .github/copilot-instructions.md .github/instructions/ AGENTS.md AGENTIC_LEARNINGS.md .agents/ .opencode/ 2>/dev/null`
+  2. Run: `agentic-setup refresh && git add CLAUDE.md .claude/ .cursor/ .cursorrules .github/copilot-instructions.md .github/instructions/ AGENTS.md AGENTIC_LEARNINGS.md .agents/ .opencode/ .agentic-setup/score.json .agentic-setup/score-history.jsonl 2>/dev/null`
   3. After it completes, briefly tell the user what agentic-setup updated. Then proceed with the commit.
 
 **Valid `agentic-setup refresh` options:** `--quiet` (suppress output) and `--dry-run` (preview without writing). Do not pass any other flags — options like `--auto-approve`, `--debug`, or `--force` do not exist and will cause errors.

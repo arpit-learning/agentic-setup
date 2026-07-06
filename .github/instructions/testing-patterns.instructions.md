@@ -1,7 +1,6 @@
 ---
-applyTo: "tests/**/*.ts"
+applyTo: "tests/**"
 ---
 # Testing Patterns
-- Vitest config in `vitest.config.ts`, setup in `tests/setup.ts`.
-- LLM calls globally mocked in `tests/setup.ts` — never call real providers.
-- Use `vi.mock()` for `fs` and `child_process` mocks.
+- Vitest configurations in `vitest.config.ts`, setups in `tests/setup.ts`.
+- LLM provider operations must be globally mocked in `tests/setup.ts`.

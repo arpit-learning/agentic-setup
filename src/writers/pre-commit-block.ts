@@ -10,9 +10,13 @@ const BLOCK_END = '<!-- /agentic:managed:pre-commit -->';
 
 function getManagedDocPaths(activeTargets?: TargetAgent[]): string {
   if (!activeTargets) {
-    return 'CLAUDE.md .claude/ .cursor/ .cursorrules .github/copilot-instructions.md .github/instructions/ AGENTS.md AGENTIC_LEARNINGS.md .agents/ .opencode/';
+    return 'CLAUDE.md .claude/ .cursor/ .cursorrules .github/copilot-instructions.md .github/instructions/ AGENTS.md AGENTIC_LEARNINGS.md .agents/ .opencode/ .agentic-setup/score.json .agentic-setup/score-history.jsonl';
   }
-  const paths = ['AGENTIC_LEARNINGS.md'];
+  const paths = [
+    'AGENTIC_LEARNINGS.md',
+    '.agentic-setup/score.json',
+    '.agentic-setup/score-history.jsonl',
+  ];
   if (activeTargets.includes('claude')) paths.push('CLAUDE.md', '.claude/');
   if (activeTargets.includes('cursor')) paths.push('.cursor/', '.cursorrules');
   if (activeTargets.includes('github-copilot'))

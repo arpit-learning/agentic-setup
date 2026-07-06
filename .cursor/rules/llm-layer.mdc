@@ -3,6 +3,5 @@ description: LLM provider implementation patterns
 globs: src/llm/**
 ---
 - Providers implement `LLMProvider` in `src/llm/types.ts`.
-- Config: env vars → `~/.agentic-setup/config.json` via `src/llm/config.ts`.
-- Skip validation if `isSeatBased()` in `src/llm/types.ts` (cursor, claude-cli).
-- Models: `minimax.ts`, `antigravity.ts`, `anthropic.ts`, `vertex.ts`, `openai-compat.ts`.
+- Configured via environment variables or file in `src/llm/config.ts`.
+- Seat-based options include `cursor-acp.ts` and `claude-cli.ts`.

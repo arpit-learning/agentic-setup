@@ -7,9 +7,19 @@ const { mockSelect, mockConfirm, mockWriteConfigFile, mockInput } = vi.hoisted((
   mockInput: vi.fn(),
 }));
 
-vi.mock('@inquirer/select', () => ({ default: mockSelect }));
-vi.mock('@inquirer/confirm', () => ({ default: mockConfirm }));
-vi.mock('@inquirer/input', () => ({ default: mockInput }));
+vi.mock('@clack/prompts', () => ({
+  intro: vi.fn(),
+  outro: vi.fn(),
+  cancel: vi.fn(),
+  isCancel: vi.fn((val) => val === undefined || val === null || val === 'cancel'),
+  confirm: vi.fn((...args) => mockConfirm(...args)),
+  select: vi.fn((...args) => mockSelect(...args)),
+  text: vi.fn((...args) => mockInput(...args)),
+  spinner: vi.fn(() => ({
+    start: vi.fn(),
+    stop: vi.fn(),
+  })),
+}));
 vi.mock('../../src/llm/cursor-acp.js', () => ({
   isCursorAgentAvailable: () => false,
   isCursorLoggedIn: () => false,

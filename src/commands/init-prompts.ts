@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import select from '@inquirer/select';
-import checkbox from '@inquirer/checkbox';
+import * as p from '@clack/prompts';
 import fs from 'fs';
 import { refineSetup } from '../ai/refine.js';
 import { SpinnerMessages, REFINE_MESSAGES } from '../utils/spinner-messages.js';
@@ -28,32 +27,27 @@ export function detectAgents(dir: string): TargetAgent {
 }
 
 export async function promptAgent(detected?: TargetAgent): Promise<TargetAgent> {
-  const choices = [
+  const options = [
     {
-      name: 'Claude Code',
+      label: 'Claude Code',
       value: 'claude' as const,
-      checked: detected?.includes('claude') ?? false,
     },
-    { name: 'Cursor', value: 'cursor' as const, checked: detected?.includes('cursor') ?? false },
+    { label: 'Cursor', value: 'cursor' as const },
     {
-      name: 'Codex (OpenAI)',
+      label: 'Codex (OpenAI)',
       value: 'codex' as const,
-      checked: detected?.includes('codex') ?? false,
     },
     {
-      name: 'OpenCode',
+      label: 'OpenCode',
       value: 'opencode' as const,
-      checked: detected?.includes('opencode') ?? false,
     },
     {
-      name: 'GitHub Copilot (sync target — writes copilot-instructions.md)',
+      label: 'GitHub Copilot (sync target — writes copilot-instructions.md)',
       value: 'github-copilot' as const,
-      checked: detected?.includes('github-copilot') ?? false,
     },
     {
-      name: 'Antigravity IDE',
+      label: 'Antigravity IDE',
       value: 'antigravity' as const,
-      checked: detected?.includes('antigravity') ?? false,
     },
   ];
 
@@ -62,14 +56,22 @@ export async function promptAgent(detected?: TargetAgent): Promise<TargetAgent> 
     ? 'Detected agents (press Enter to confirm, or toggle with space)'
     : 'Which coding agents do you use? (toggle with space)';
 
-  const selected = await checkbox({
+  const result = await p.multiselect({
     message,
-    choices,
-    validate: (items) => {
-      if (items.length === 0) return 'At least one agent must be selected';
-      return true;
-    },
+    options,
+    required: true,
   });
+
+  if (p.isCancel(result)) {
+    p.cancel('Cancelled.');
+    throw new Error('__exit__');
+  }
+
+  const selected = result as TargetAgent;
+  if (selected.length === 0) {
+    console.log(chalk.red('  At least one agent must be selected.'));
+    return promptAgent(detected);
+  }
   return selected;
 }
 
@@ -85,13 +87,20 @@ export async function promptLearnInstall(targetAgent: TargetAgent): Promise<bool
   console.log(chalk.dim(`  or you correct a mistake, it captures the lesson so it won't`));
   console.log(chalk.dim(`  happen again. Runs once at session end using the fast model.\n`));
 
-  return select({
+  const result = await p.select({
     message: 'Enable session learning?',
-    choices: [
-      { name: 'Enable session learning (recommended)', value: true },
-      { name: 'Skip for now', value: false },
+    options: [
+      { label: 'Enable session learning (recommended)', value: true },
+      { label: 'Skip for now', value: false },
     ],
   });
+
+  if (p.isCancel(result)) {
+    p.cancel('Cancelled.');
+    throw new Error('__exit__');
+  }
+
+  return result as boolean;
 }
 
 export async function promptReviewAction(
@@ -100,31 +109,36 @@ export async function promptReviewAction(
 ): Promise<ReviewAction> {
   if (!hasChanges) return 'accept';
 
-  const choices: Array<{ name: string; value: ReviewAction | 'review' }> = [];
+  const options: Array<{ label: string; value: ReviewAction | 'review' }> = [];
 
-  choices.push({ name: 'Accept and apply', value: 'accept' as const });
+  options.push({ label: 'Accept and apply', value: 'accept' as const });
 
   if (hasChanges && staged) {
-    choices.push({ name: 'Review diffs first', value: 'review' as const });
+    options.push({ label: 'Review diffs first', value: 'review' as const });
   }
 
-  choices.push(
-    { name: 'Refine via chat', value: 'refine' as const },
-    { name: 'Decline all changes', value: 'decline' as const },
+  options.push(
+    { label: 'Refine via chat', value: 'refine' as const },
+    { label: 'Decline all changes', value: 'decline' as const },
   );
 
-  const choice = await select({
+  const result = await p.select({
     message: 'What would you like to do?',
-    choices,
+    options,
   });
 
-  if (choice === 'review' && staged) {
+  if (p.isCancel(result)) {
+    p.cancel('Cancelled.');
+    throw new Error('__exit__');
+  }
+
+  if (result === 'review' && staged) {
     const reviewMethod = await promptReviewMethod();
     await openReview(reviewMethod, staged.stagedFiles);
     return promptReviewAction(hasChanges, undefined);
   }
 
-  return choice as ReviewAction;
+  return result as ReviewAction;
 }
 
 export async function classifyRefineIntent(message: string): Promise<boolean> {

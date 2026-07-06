@@ -36,8 +36,14 @@ function serializeScoreForJson(result: ReturnType<typeof computeLocalScore>) {
   };
 }
 
-const CONFIG_FILES = ['CLAUDE.md', 'AGENTS.md', '.cursorrules', 'AGENTIC_LEARNINGS.md'];
-const CONFIG_DIRS = ['.claude', '.cursor'];
+const CONFIG_FILES = [
+  'CLAUDE.md',
+  'AGENTS.md',
+  '.cursorrules',
+  'AGENTIC_LEARNINGS.md',
+  '.agentic-setup.yaml',
+];
+const CONFIG_DIRS = ['.claude', '.cursor', '.agents', '.opencode', '.gemini', '.github'];
 
 function scoreBaseResult(ref: string, target: TargetAgent | undefined): ScoreResult | null {
   if (!/^[\w.\-/~^@{}]+$/.test(ref)) return null;

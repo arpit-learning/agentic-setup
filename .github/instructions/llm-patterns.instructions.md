@@ -1,7 +1,6 @@
 ---
-applyTo: "src/llm/**/*.ts"
+applyTo: "src/llm/**"
 ---
-# LLM Provider Patterns
+# LLM Providers
 - Providers implement `LLMProvider` in `src/llm/types.ts`.
-- Config: env vars → `~/.agentic-setup/config.json` via `src/llm/config.ts`.
-- Skip validation if `isSeatBased()` in `src/llm/types.ts`.
+- Configuration is managed via `src/llm/config.ts`.
