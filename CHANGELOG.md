@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.1) (2026-07-06)
+
+
+### Features
+
+* introduce project context extraction and stack detection utilities to improve AI analysis capabilities ([66e48e8](https://github.com/arpit-pm1/agentic-setup/commit/66e48e814cf5306d7a13e1abac239c18fe9c28c6))
+
 # [1.0.0](https://github.com/arpit-pm1/agentic-setup/compare/v0.0.2-alpha.1...v1.0.0) (2026-06-21)
 
 
