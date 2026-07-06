@@ -91,7 +91,7 @@
     "openai": "^6.45.0",
     "ora": "^9.4.1",
     "p-limit": "^7.3.0",
-    "posthog-node": "^5.38.2",
+    "posthog-node": "^5.39.4",
     "web-tree-sitter": "^0.26.10"
   },
   "devDependencies": {
