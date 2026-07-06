@@ -933,6 +933,24 @@ export function buildGeneratePrompt(
   if (fingerprint.frameworks.length > 0)
     parts.push(`Frameworks: ${fingerprint.frameworks.join(', ')}`);
   if (fingerprint.description) parts.push(`Project description: ${fingerprint.description}`);
+
+  if (fingerprint.projectContext) {
+    const ctx = fingerprint.projectContext;
+    parts.push('\nProgrammatic Project Context:');
+    if (ctx.runtimeVersion) parts.push(`- Runtime Version: ${ctx.runtimeVersion}`);
+    if (ctx.envVars.length > 0)
+      parts.push(`- Required Environment Variables: ${ctx.envVars.join(', ')}`);
+    if (ctx.services.length > 0)
+      parts.push(`- Local Services (Docker): ${ctx.services.join(', ')}`);
+    if (ctx.configFiles.length > 0)
+      parts.push(`- Configuration Files: ${ctx.configFiles.join(', ')}`);
+    if (ctx.runCommands && Object.keys(ctx.runCommands).length > 0) {
+      parts.push('- Detected Run/Dev Commands:');
+      for (const [name, cmd] of Object.entries(ctx.runCommands)) {
+        parts.push(`  * ${name}: \`${cmd}\``);
+      }
+    }
+  }
   if (fingerprint.fileTree.length > 0) {
     const caPaths = fingerprint.codeAnalysis?.files.map((f) => f.path) ?? [];
     const tree = sampleFileTree(fingerprint.fileTree, caPaths, LIMITS.FILE_TREE_ENTRIES);

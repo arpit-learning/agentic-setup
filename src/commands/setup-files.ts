@@ -17,8 +17,7 @@ export function collectSetupFiles(
   if (claude) {
     if (claude.claudeMd) files.push({ path: 'CLAUDE.md', content: claude.claudeMd as string });
     const skills = claude.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(skills)) {
       for (const skill of skills) {
         files.push({
@@ -32,8 +31,7 @@ export function collectSetupFiles(
   if (codex) {
     if (codex.agentsMd) files.push({ path: 'AGENTS.md', content: codex.agentsMd as string });
     const codexSkills = codex.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(codexSkills)) {
       for (const skill of codexSkills) {
         files.push({
@@ -48,8 +46,7 @@ export function collectSetupFiles(
     if (cursor.cursorrules)
       files.push({ path: '.cursorrules', content: cursor.cursorrules as string });
     const cursorSkills = cursor.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(cursorSkills)) {
       for (const skill of cursorSkills) {
         files.push({
@@ -72,8 +69,7 @@ export function collectSetupFiles(
       files.push({ path: 'AGENTS.md', content: opencode.agentsMd as string });
     }
     const opencodeSkills = opencode.skills as
-      | Array<{ name: string; description: string; content: string }>
-      | undefined;
+      Array<{ name: string; description: string; content: string }> | undefined;
     if (Array.isArray(opencodeSkills)) {
       for (const skill of opencodeSkills) {
         files.push({
@@ -92,8 +88,7 @@ export function collectSetupFiles(
         content: copilot.instructions as string,
       });
     const instructionFiles = copilot.instructionFiles as
-      | Array<{ filename: string; content: string }>
-      | undefined;
+      Array<{ filename: string; content: string }> | undefined;
     if (Array.isArray(instructionFiles)) {
       for (const file of instructionFiles) {
         files.push({

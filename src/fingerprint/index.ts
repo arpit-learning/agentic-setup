@@ -8,6 +8,11 @@ import { analyzeCode, CodeAnalysis } from './code-analysis.js';
 import { detectProjectStack } from '../ai/detect.js';
 import { loadConfig, getFastModel } from '../llm/config.js';
 import { loadFingerprintCache, saveFingerprintCache } from './cache.js';
+import {
+  collectProjectContext,
+  detectStackProgrammatically,
+  type ProjectContext,
+} from './project-context.js';
 
 export type { CodeAnalysis };
 
@@ -24,6 +29,7 @@ export interface Fingerprint {
   codeAnalysis?: CodeAnalysis;
   description?: string;
   sources?: import('./sources.js').SourceSummary[];
+  projectContext?: ProjectContext;
 }
 
 export async function collectFingerprint(dir: string): Promise<Fingerprint> {
@@ -31,6 +37,7 @@ export async function collectFingerprint(dir: string): Promise<Fingerprint> {
   const fileTree = getFileTree(dir);
   const existingConfigs = readExistingConfigs(dir);
   const packageName = readPackageName(dir);
+  const projectContext = collectProjectContext(dir, fileTree);
 
   const cached = loadFingerprintCache(dir, fileTree);
   if (cached) {
@@ -43,6 +50,7 @@ export async function collectFingerprint(dir: string): Promise<Fingerprint> {
       fileTree,
       existingConfigs,
       codeAnalysis: cached.codeAnalysis,
+      projectContext,
     };
   }
 
@@ -56,9 +64,10 @@ export async function collectFingerprint(dir: string): Promise<Fingerprint> {
     fileTree,
     existingConfigs,
     codeAnalysis,
+    projectContext,
   };
 
-  const workspaces = await enrichWithLLM(fingerprint);
+  const workspaces = await enrichWithLLM(dir, fingerprint);
 
   saveFingerprintCache(
     dir,
@@ -68,6 +77,7 @@ export async function collectFingerprint(dir: string): Promise<Fingerprint> {
     fingerprint.frameworks,
     fingerprint.tools,
     workspaces,
+    projectContext,
   );
 
   return fingerprint;
@@ -90,7 +100,15 @@ export function computeFingerprintHash(fingerprint: Fingerprint): string {
   return crypto.createHash('sha256').update(key).digest('hex');
 }
 
-async function enrichWithLLM(fingerprint: Fingerprint): Promise<string[]> {
+async function enrichWithLLM(dir: string, fingerprint: Fingerprint): Promise<string[]> {
+  // 1. Programmatic detection first
+  const programmatic = detectStackProgrammatically(dir, fingerprint.fileTree);
+
+  // Set initial programmatic values
+  fingerprint.languages = programmatic.languages;
+  fingerprint.frameworks = programmatic.frameworks;
+  fingerprint.tools = programmatic.tools;
+
   try {
     const config = loadConfig();
     if (!config) return [];
@@ -107,22 +125,33 @@ async function enrichWithLLM(fingerprint: Fingerprint): Promise<string[]> {
 
     let result: Awaited<ReturnType<typeof detectProjectStack>>;
     try {
-      result = await detectProjectStack(fingerprint.fileTree, suffixCounts);
+      result = await detectProjectStack(
+        fingerprint.fileTree,
+        suffixCounts,
+        undefined,
+        programmatic,
+      );
     } catch (firstErr) {
       const fast = getFastModel();
       if (config.provider === 'cursor' && fast && fast !== 'auto') {
-        result = await detectProjectStack(fingerprint.fileTree, suffixCounts, 'auto');
+        result = await detectProjectStack(fingerprint.fileTree, suffixCounts, 'auto', programmatic);
       } else {
         throw firstErr;
       }
     }
 
-    if (result.languages?.length) fingerprint.languages = result.languages;
-    if (result.frameworks?.length) fingerprint.frameworks = result.frameworks;
-    if (result.tools?.length) fingerprint.tools = result.tools;
+    // 2. Merge (union) the programmatic and LLM detections
+    const languages = new Set([...programmatic.languages, ...(result.languages || [])]);
+    const frameworks = new Set([...programmatic.frameworks, ...(result.frameworks || [])]);
+    const tools = new Set([...programmatic.tools, ...(result.tools || [])]);
+
+    if (languages.size > 0) fingerprint.languages = Array.from(languages);
+    if (frameworks.size > 0) fingerprint.frameworks = Array.from(frameworks);
+    if (tools.size > 0) fingerprint.tools = Array.from(tools);
 
     return result.workspaces ?? [];
   } catch {
+    // If LLM call fails completely, programmatic detection is already populated on fingerprint
     return [];
   }
 }
