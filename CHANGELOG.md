@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.2](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* handle absolute paths in backup and restore operations by calculating relative path from cwd ([1e0adfc](https://github.com/arpit-pm1/agentic-setup/commit/1e0adfcb96a052573f4a8eb3019f08284a11f558))
+
+
+### Features
+
+* implement modular skill system with multi-agent support and integrate automated test/scoring patterns ([14d3efa](https://github.com/arpit-pm1/agentic-setup/commit/14d3efa39bb9b08bab409c227ed03cd52089f0c7))
+
 ## [1.0.1](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.1) (2026-07-06)
 
 
