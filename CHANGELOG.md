@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* resolve CI template path by checking both development and production locations ([be96977](https://github.com/arpit-pm1/agentic-setup/commit/be969770856fed857b58b28eeeb63e6072df7abe))
+
 ## [1.0.2](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.2) (2026-07-06)
 
 
