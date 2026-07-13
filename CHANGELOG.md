@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.5) (2026-07-13)
+
+
+### Features
+
+* add interactive prompts to configure Java version and JDK distribution for CI workflows ([d57bb35](https://github.com/arpit-pm1/agentic-setup/commit/d57bb3526e2eda5b3b32a8006d0425adb275ab49))
+
 ## [1.0.4](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.4) (2026-07-13)
 
 
