@@ -1,0 +1,122 @@
+name: Version Bump
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump_type:
+        description: 'Version bump type'
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - alpha
+          - beta
+          - rc
+      branch:
+        description: 'Base branch to bump from (PR target; e.g. main or staging)'
+        required: true
+        default: main
+        type: string
+
+env:
+  NODE_VERSION: '20.19'
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+      - name: Require GH_TOKEN
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::GH_TOKEN secret is required to push the release branch, tags, and open a PR."
+            echo "Create a PAT with Contents + Pull requests write. See CONTRIBUTING.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GH_TOKEN }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Configure git credentials
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+
+      - name: Create release work branch
+        run: git checkout -b "chore/bump-${{ github.run_id }}"
+
+      - name: Bump version (release-it)
+        id: bump
+        env:
+          GIT_AUTHOR_NAME: github-actions
+          GIT_AUTHOR_EMAIL: github-actions@github.com
+          GIT_COMMITTER_NAME: github-actions
+          GIT_COMMITTER_EMAIL: github-actions@github.com
+          GITHUB_TOKEN: ${{ env.GH_TOKEN }}
+        run: |
+          npm run version-bump:${{ inputs.version_bump_type }} -- --no-git.push --no-git.requireUpstream
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          RELEASE_BRANCH="chore/release-v${VERSION}"
+          git branch -m "${RELEASE_BRANCH}"
+          echo "release_branch=${RELEASE_BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Push release branch and tag
+        run: git push -u origin HEAD --follow-tags
+
+      - name: Open pull request
+        id: pr
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+          RELEASE_BRANCH: ${{ steps.bump.outputs.release_branch }}
+          BASE_BRANCH: ${{ inputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          BODY_FILE=$(mktemp)
+          {
+            echo "Automated version bump from [workflow run](${RUN_URL})."
+            echo ""
+            echo "- **Version:** v${VERSION}"
+            echo "- **Bump:** ${{ inputs.version_bump_type }}"
+            echo "- **Base branch:** ${BASE_BRANCH}"
+            echo ""
+            echo "Merge this PR to land the version bump on \`${BASE_BRANCH}\`. The git tag \`v${VERSION}\` is already pushed and points at this commit."
+          } > "${BODY_FILE}"
+          PR_URL=$(gh pr create \
+            --base "${BASE_BRANCH}" \
+            --head "${RELEASE_BRANCH}" \
+            --title "chore: release v${VERSION}" \
+            --body-file "${BODY_FILE}")
+          rm -f "${BODY_FILE}"
+          echo "url=${PR_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          {
+            echo "## Version bump PR"
+            echo ""
+            echo "- **Version:** v${{ steps.bump.outputs.version }}"
+            echo "- **Release branch:** \`${{ steps.bump.outputs.release_branch }}\`"
+            echo "- **Base branch:** \`${{ inputs.branch }}\`"
+            echo "- **Pull request:** ${{ steps.pr.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
