@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.4) (2026-07-13)
+
+
+### Features
+
+* add CI/CD workflow templates for Java, Node.js, and common repository maintenance tasks ([be3a01a](https://github.com/arpit-pm1/agentic-setup/commit/be3a01a0883a57fe34db8077d4ad90beb2a8bb53))
+
 ## [1.0.3](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.3) (2026-07-13)
 
 
