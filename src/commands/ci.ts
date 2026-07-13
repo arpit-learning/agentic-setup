@@ -143,6 +143,45 @@ Ensure the content is valid YAML.`;
   }
 
   // Handle static templates
+  const javaWorkflowsSelected = selectedWorkflows.some((w) => w.startsWith('java/'));
+  let javaVersion: string | null = null;
+  let jdkDistribution: string | null = null;
+
+  if (javaWorkflowsSelected) {
+    const vResult = await p.select({
+      message: 'Select the Java version for your CI pipeline:',
+      options: [
+        { label: 'Java 21', value: '21' },
+        { label: 'Java 17', value: '17' },
+        { label: 'Java 11', value: '11' },
+        { label: 'Java 8', value: '8' },
+      ],
+      initialValue: '17',
+    });
+    if (p.isCancel(vResult)) {
+      p.cancel('Cancelled.');
+      return;
+    }
+    javaVersion = vResult as string;
+
+    const dResult = await p.select({
+      message: 'Select the JDK distribution:',
+      options: [
+        { label: 'Temurin (Eclipse)', value: 'temurin' },
+        { label: 'Corretto (Amazon)', value: 'corretto' },
+        { label: 'Zulu (Azul Systems)', value: 'zulu' },
+        { label: 'Microsoft', value: 'microsoft' },
+        { label: 'Liberica (BellSoft)', value: 'liberica' },
+      ],
+      initialValue: 'temurin',
+    });
+    if (p.isCancel(dResult)) {
+      p.cancel('Cancelled.');
+      return;
+    }
+    jdkDistribution = dResult as string;
+  }
+
   for (const workflowPath of selectedWorkflows) {
     if (workflowPath === 'ai_generate') continue;
 
@@ -160,7 +199,12 @@ Ensure the content is valid YAML.`;
       continue;
     }
 
-    const content = fs.readFileSync(templatePath, 'utf-8');
+    let content = fs.readFileSync(templatePath, 'utf-8');
+    if (workflowPath.startsWith('java/') && javaVersion && jdkDistribution) {
+      content = content.replace(/{{JAVA_VERSION}}/g, javaVersion);
+      content = content.replace(/{{JDK_DISTRIBUTION}}/g, jdkDistribution);
+    }
+
     if (!options.dryRun) {
       fs.writeFileSync(outPath, content);
     }
