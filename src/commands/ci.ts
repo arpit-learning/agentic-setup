@@ -4,7 +4,11 @@ import chalk from 'chalk';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_PATH = path.resolve(__dirname, '../../templates/github/workflows/agentic-sync.yml');
+const possiblePaths = [
+  path.resolve(__dirname, '../../templates/github/workflows/agentic-sync.yml'), // dev: src/commands/ci.ts
+  path.resolve(__dirname, '../templates/github/workflows/agentic-sync.yml'), // prod: dist/bin.js
+];
+const TEMPLATE_PATH = possiblePaths.find((p) => fs.existsSync(p)) || possiblePaths[0];
 
 export interface CiInitOptions {
   dryRun?: boolean;
