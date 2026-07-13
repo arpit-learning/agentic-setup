@@ -1,0 +1,143 @@
+name: Publish Package
+
+permissions:
+  contents: write
+  packages: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type (release, alpha, beta, rc)'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - release
+          - alpha
+          - beta
+          - rc
+      build_type:
+        description: 'Validation before publish (prod, beta, stage)'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - beta
+          - stage
+      branch:
+        description: 'Branch to publish from (must already contain bumped version + tag from Version Bump PR)'
+        required: true
+        default: 'main'
+        type: string
+
+env:
+  NODE_VERSION: '20.19'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+      - name: Require GH_TOKEN
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::GH_TOKEN secret is required for npm publish, GitHub Releases, and tag push."
+            echo "Create a PAT with Contents + Packages write. See CONTRIBUTING.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Resolve version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release tag
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          git rev-parse "refs/tags/${TAG}" >/dev/null \
+            || { echo "::error::Tag ${TAG} not found. Run Version Bump, merge the PR, then publish."; exit 1; }
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: https://npm.pkg.github.com
+          scope: '@arpit-pm1'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate (prod)
+        if: inputs.build_type == 'prod'
+        run: |
+          npm run lint
+          npx tsc --noEmit
+          npm test
+
+      - name: Validate (beta)
+        if: inputs.build_type == 'beta'
+        run: npm test
+
+      - name: Validate (stage)
+        if: inputs.build_type == 'stage'
+        run: npm run build
+
+      - name: Build
+        if: inputs.build_type != 'stage'
+        run: npm run build
+
+      - name: Smoke test
+        run: |
+          node dist/bin.js --version
+          node dist/bin.js --help
+        env:
+          AGENTIC_SETUP_SKIP_UPDATE_CHECK: '1'
+
+      - name: Publish to GitHub Packages
+        run: npm run publish:${{ inputs.release_type }}
+        env:
+          NODE_AUTH_TOKEN: ${{ env.GH_TOKEN }}
+
+      - name: Push floating major tag
+        if: inputs.release_type == 'release'
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          MAJOR=$(echo "${{ steps.version.outputs.version }}" | cut -d. -f1)
+          git tag -f "v${MAJOR}"
+          git push -f origin "v${MAJOR}"
+
+      - name: Create GitHub release
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v${VERSION}"
+          if [ "${{ inputs.release_type }}" = "release" ]; then
+            if [ -f CHANGELOG.md ]; then
+              gh release create "${TAG}" \
+                --title "${TAG}" \
+                --notes-file CHANGELOG.md \
+                --latest
+            else
+              gh release create "${TAG}" \
+                --title "${TAG}" \
+                --generate-notes \
+                --latest
+            fi
+          else
+            gh release create "${TAG}" \
+              --title "${TAG} (${{ inputs.release_type }})" \
+              --generate-notes \
+              --prerelease
+          fi
+
+      - name: Output package details
+        run: cat package.json

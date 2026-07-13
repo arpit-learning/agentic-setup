@@ -1,0 +1,71 @@
+name: agentic-setup Score
+
+on:
+  pull_request:
+    branches: [main, beta, staging]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: agentic-score-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  score:
+    name: score
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20.19
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
+
+      - name: Score PR vs base
+        run: |
+          node dist/bin.js score --compare origin/${{ github.base_ref }} --comment > comment.md
+        env:
+          AGENTIC_SETUP_SKIP_UPDATE_CHECK: "1"
+          AGENTIC_SETUP_TELEMETRY_DISABLED: "1"
+
+      - name: Comment on PR
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('comment.md', 'utf8');
+            const marker = '<!-- agentic-score -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
