@@ -77,7 +77,7 @@
     "version:print": "node -p \"require('./package.json').version\""
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.110.0",
+    "@anthropic-ai/sdk": "^0.111.0",
     "@anthropic-ai/vertex-sdk": "^0.19.0",
     "@clack/prompts": "^1.7.0",
     "chalk": "^5.4.0",
