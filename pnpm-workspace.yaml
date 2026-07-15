@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@posthog/core@1.41.0'
+  - '@posthog/types@1.394.0'
+  - openai@6.47.0
+  - posthog-node@5.42.0
