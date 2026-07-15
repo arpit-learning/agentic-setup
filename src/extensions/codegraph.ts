@@ -93,23 +93,33 @@ function walkRepo(dir: string, excludes: string[]): string[] {
 
 function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    https
-      .get(url, (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to download: ${response.statusCode} for ${url}`));
-          return;
-        }
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          resolve();
+    const request = (currentUrl: string) => {
+      https
+        .get(currentUrl, (response) => {
+          if (response.statusCode === 301 || response.statusCode === 302) {
+            const redirectUrl = response.headers.location;
+            if (redirectUrl) {
+              request(new URL(redirectUrl, currentUrl).href);
+              return;
+            }
+          }
+          if (response.statusCode !== 200) {
+            reject(new Error(`Failed to download: ${response.statusCode} for ${currentUrl}`));
+            return;
+          }
+          const file = fs.createWriteStream(dest);
+          response.pipe(file);
+          file.on('finish', () => {
+            file.close();
+            resolve();
+          });
+        })
+        .on('error', (err) => {
+          if (fs.existsSync(dest)) fs.unlinkSync(dest);
+          reject(err);
         });
-      })
-      .on('error', (err) => {
-        fs.unlinkSync(dest);
-        reject(err);
-      });
+    };
+    request(url);
   });
 }
 
@@ -122,7 +132,8 @@ async function ensureLanguageWasm(language: string): Promise<string> {
   if (fs.existsSync(destPath)) {
     return destPath;
   }
-  const url = `https://unpkg.com/tree-sitter-wasms@0.1.13/out/tree-sitter-${language}.wasm`;
+  const pkgName = language.replace(/_/g, '-');
+  const url = `https://unpkg.com/tree-sitter-${pkgName}@latest/tree-sitter-${language}.wasm`;
   await downloadFile(url, destPath);
   return destPath;
 }

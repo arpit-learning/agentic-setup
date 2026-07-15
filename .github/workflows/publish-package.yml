@@ -68,7 +68,7 @@ jobs:
           git rev-parse "refs/tags/${TAG}" >/dev/null \
             || { echo "::error::Tag ${TAG} not found. Run Version Bump, merge the PR, then publish."; exit 1; }
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com
