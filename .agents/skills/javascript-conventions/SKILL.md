@@ -37,7 +37,7 @@ description: Establishes JavaScript and TypeScript coding patterns, style guidel
          // logic
        });
      ```
-   - *Validation Gate*: Build the CLI codebase using `npm run build` (which compiles from `src/` to `dist/` using tsdown) to confirm error-free compilation of command handlers.
+   - *Validation Gate*: Build the CLI codebase using `pnpm run build` (which compiles from `src/` to `dist/` using tsdown) to confirm error-free compilation of command handlers.
 
 4. **Writing Tests**:
    - Test files must use the `vitest` framework and mirror the `src/` directory layout. Load global mocks if testing LLM integrations by referencing patterns in `tests/setup.ts`.

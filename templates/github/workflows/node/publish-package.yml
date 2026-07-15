@@ -33,7 +33,7 @@ on:
         type: string
 
 env:
-  NODE_VERSION: '20.19'
+  NODE_VERSION: '22'
 
 jobs:
   publish:
@@ -44,7 +44,7 @@ jobs:
       - name: Require GH_TOKEN
         run: |
           if [ -z "${GH_TOKEN}" ]; then
-            echo "::error::GH_TOKEN secret is required for npm publish, GitHub Releases, and tag push."
+            echo "::error::GH_TOKEN secret is required for pnpm publish, GitHub Releases, and tag push."
             echo "Create a PAT with Contents + Packages write. See CONTRIBUTING.md."
             exit 1
           fi
@@ -67,34 +67,37 @@ jobs:
           TAG="v${{ steps.version.outputs.version }}"
           git rev-parse "refs/tags/${TAG}" >/dev/null \
             || { echo "::error::Tag ${TAG} not found. Run Version Bump, merge the PR, then publish."; exit 1; }
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
 
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com
           scope: '@arpit-pm1'
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Validate (prod)
         if: inputs.build_type == 'prod'
         run: |
-          npm run lint
+          pnpm run lint
           npx tsc --noEmit
-          npm test
+          pnpm test
 
       - name: Validate (beta)
         if: inputs.build_type == 'beta'
-        run: npm test
+        run: pnpm test
 
       - name: Validate (stage)
         if: inputs.build_type == 'stage'
-        run: npm run build
+        run: pnpm run build
 
       - name: Build
         if: inputs.build_type != 'stage'
-        run: npm run build
+        run: pnpm run build
 
       - name: Smoke test
         run: |
@@ -104,7 +107,7 @@ jobs:
           AGENTIC_SETUP_SKIP_UPDATE_CHECK: '1'
 
       - name: Publish to GitHub Packages
-        run: npm run publish:${{ inputs.release_type }}
+        run: pnpm run publish:${{ inputs.release_type }}
         env:
           NODE_AUTH_TOKEN: ${{ env.GH_TOKEN }}
 

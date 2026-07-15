@@ -10,8 +10,8 @@ paths:
 ## Critical
 - **Workflows Location**: All workflow definitions MUST be placed in `.github/workflows/` and use the `.yml` or `.yaml` extension.
 - **Strict Two-Step Release Flow**: Never configure automatic publishing on every push to main. Publishing MUST be a manual action via `workflow_dispatch` with inputs for `release_type` (`release`, `alpha`, `beta`, `rc`) and `build_type` (`prod`, `beta`, `stage`) as specified in [CONTRIBUTING.md](file:///Users/arpit.malik/.gemini/antigravity-cli/scratch/CONTRIBUTING.md).
-- **Build Quality Gates**: For `prod` builds, you MUST run linting, type-checking (`npx tsc --noEmit`), testing (`npm run test`), and building (`npm run build`).
-- **Secrets Management**: Never hardcode API keys, npm tokens, or credentials. Use `${{ secrets.GITHUB_TOKEN }}` or custom GitHub Secrets (e.g., `${{ secrets.NPM_TOKEN }}`).
+- **Build Quality Gates**: For `prod` builds, you MUST run linting, type-checking (`npx tsc --noEmit`), testing (`pnpm run test`), and building (`pnpm run build`).
+- **Secrets Management**: Never hardcode API keys, pnpm tokens, or credentials. Use `${{ secrets.GITHUB_TOKEN }}` or custom GitHub Secrets (e.g., `${{ secrets.PNPM_TOKEN }}`).
 
 ## Instructions
 1. **Define the Workflow Trigger**:
@@ -22,13 +22,13 @@ paths:
 2. **Configure Environment & Runner**:
    - Set `runs-on: ubuntu-latest`.
    - Use `actions/checkout@v4` to pull repository code.
-   - Use `actions/setup-node@v4` with `node-version: 20` and set `cache: 'npm'` to optimize dependency installation.
-   - *Validation Gate*: Use `npm ci` rather than `npm install` to guarantee reproducible CI environment builds.
+   - Use `actions/setup-node@v4` with `node-version: 20` and set `cache: 'pnpm'` to optimize dependency installation.
+   - *Validation Gate*: Use `pnpm ci` rather than `pnpm install` to guarantee reproducible CI environment builds.
 
 3. **Implement Quality and Build Checks**:
    - Execute linting, type-checking, and tests.
    - Run `npx tsc --noEmit` to verify type safety.
-   - Run `npm test` or `npm run test` to run Vitest tests.
+   - Run `pnpm test` or `pnpm run test` to run Vitest tests.
    - *Validation Gate*: Ensure that tests run in non-watch/CI mode. Vitest defaults to run mode in CI environments automatically, but check if command flags like `run` are needed.
 
 4. **Add Permissions Block for Releases**:
@@ -63,14 +63,14 @@ paths:
         - uses: actions/setup-node@v4
           with:
             node-version: 20
-            cache: 'npm'
-        - run: npm ci
+            cache: 'pnpm'
+        - run: pnpm ci
         - name: Run Lint & Type Check
           run: |
-            npm run lint
-            npx tsc --noEmit
+            pnpm run lint
+            pnpm exec tsc --noEmit
         - name: Run Tests
-          run: npm test
+          run: pnpm test
   ```
 
 ## Common Issues
@@ -80,7 +80,7 @@ paths:
     permissions:
       contents: write
     ```
-- **Error: `npm ci can only install packages when package-lock.json is present`**:
-  - *Fix*: Ensure `package-lock.json` is not ignored in `.gitignore` and is committed. If the project deliberately doesn't use a lockfile, fallback to `npm install`.
+- **Error: `pnpm ci can only install packages when package-lock.json is present`**:
+  - *Fix*: Ensure `package-lock.json` is not ignored in `.gitignore` and is committed. If the project deliberately doesn't use a lockfile, fallback to `pnpm install`.
 - **Error: CI hangs indefinitely during test execution**:
   - *Fix*: Ensure Vitest is not running in watch mode. Explicitly run `npx vitest run` or verify that the `CI` environment variable is set to `true`.

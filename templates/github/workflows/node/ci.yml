@@ -19,28 +19,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20.19
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run format:check
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run format:check
 
   typecheck:
     name: typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20.19
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
       - run: npx tsc --noEmit
 
   test:
@@ -48,19 +54,22 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [20.19, 22]
+        node: [22, 24]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
 
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
         env:
           AGENTIC_SETUP_SKIP_UPDATE_CHECK: "1"
           AGENTIC_SETUP_TELEMETRY_DISABLED: "1"
@@ -70,14 +79,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20.19
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
       - name: Smoke test
         run: node dist/bin.js --version
         env:
@@ -88,11 +100,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20.19
-          cache: npm
+          node-version: 22
+      - name: Generate package-lock.json for npm audit
+        run: npm i --package-lock-only --ignore-scripts
+      - name: Run npm audit
+        run: npm audit --audit-level=high
 
-      - run: npm ci
-      - run: npm audit --audit-level=high
+  outdated:
+    name: check-outdated
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check for outdated dependencies
+        run: pnpm outdated
+        continue-on-error: true

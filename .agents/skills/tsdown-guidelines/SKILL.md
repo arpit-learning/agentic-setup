@@ -22,11 +22,11 @@ description: Provides build guidelines, configuration setups, and best practices
 
 3. **Execute the tsdown Build**
    - Compile the TypeScript source code using tsdown.
-   - *Validation Gate*: Run `npm run build`. Verify that the compilation completes without errors and the `dist/` directory is updated with the compiled files. (This step depends on Step 2).
+   - *Validation Gate*: Run `pnpm run build`. Verify that the compilation completes without errors and the `dist/` directory is updated with the compiled files. (This step depends on Step 2).
 
 4. **Run Unit and Integration Tests**
    - Execute the test suite using Vitest to ensure no regression was introduced.
-   - *Validation Gate*: Run `npm run test` or `npx vitest run <changed-test-file>` and ensure all tests pass. (This step depends on Step 3).
+   - *Validation Gate*: Run `pnpm run test` or `npx vitest run <changed-test-file>` and ensure all tests pass. (This step depends on Step 3).
 
 ## Examples
 
@@ -39,8 +39,8 @@ description: Provides build guidelines, configuration setups, and best practices
      import { GeminiProvider } from './gemini.js';
      ```
   3. Ran `npx tsc --noEmit` to verify type safety.
-  4. Ran `npm run build` to compile the changes using tsdown.
-  5. Ran `npm run test` to verify no existing tests were broken.
+  4. Ran `pnpm run build` to compile the changes using tsdown.
+  5. Ran `pnpm run test` to verify no existing tests were broken.
 * **Result**: Project builds successfully and outputs compiled JS files under `dist/` with correct ESM import paths.
 
 ## Common Issues
@@ -55,4 +55,4 @@ description: Provides build guidelines, configuration setups, and best practices
   - **Fix**:
     1. Check `dist/` outputs to see if target imports were compiled without `.js`.
     2. Verify the source file has `.js` on the import statement.
-    3. Re-run `npm run build` to regenerate the output.
+    3. Re-run `pnpm run build` to regenerate the output.

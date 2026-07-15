@@ -8,6 +8,5 @@
 
 ## Testing
 
-- [ ] `npm run ci:check` passes locally
-- [ ] No high/critical `npm audit` findings introduced
+- [ ] `pnpm run ci:check` passes locally
 - [ ] Tested manually with `agentic-setup init` / `agentic-setup score` (if behavior changed)

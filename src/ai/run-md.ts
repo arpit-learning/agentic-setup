@@ -25,20 +25,28 @@ function readPackageScripts(repoRoot: string): Record<string, string> | null {
 
 export function detectRunMd(repoRoot: string, fingerprint: Fingerprint): RunMdContent {
   const scripts = readPackageScripts(repoRoot);
-  let startup = 'npm run dev';
-  let test = 'npm test';
+  const pkgManager = fs.existsSync(path.join(repoRoot, 'pnpm-lock.yaml'))
+    ? 'pnpm'
+    : fs.existsSync(path.join(repoRoot, 'yarn.lock'))
+      ? 'yarn'
+      : fs.existsSync(path.join(repoRoot, 'bun.lockb'))
+        ? 'bun'
+        : 'npm';
+
+  let startup = `${pkgManager} run dev`;
+  let test = `${pkgManager} test`;
   let baseUrl = 'http://localhost:3000';
   let health = '/health';
 
   if (scripts) {
     startup = scripts.dev
-      ? 'npm run dev'
+      ? `${pkgManager} run dev`
       : scripts.start
-        ? 'npm run start'
+        ? `${pkgManager} run start`
         : scripts.serve
-          ? 'npm run serve'
+          ? `${pkgManager} run serve`
           : startup;
-    test = scripts.test ? 'npm test' : test;
+    test = scripts.test ? `${pkgManager} test` : test;
   } else if (fs.existsSync(path.join(repoRoot, 'Makefile'))) {
     startup = 'make run';
     test = 'make test';
