@@ -1,6 +1,6 @@
 ---
 name: release-it-guidelines
-description: Guides setup, configuration, and execution of release-it version bumping and changelog workflows. Use when modifying release scripts, configuring release-it, running release commands, or adding conventional-changelog configurations. Key capabilities include configuring .release-it.json, running npm run release, and setting up release workflows. Do NOT use for general package installation, local npm publishing, or unrelated CI/CD setups.
+description: Guides setup, configuration, and execution of release-it version bumping and changelog workflows. Use when modifying release scripts, configuring release-it, running release commands, or adding conventional-changelog configurations. Key capabilities include configuring .release-it.json, running pnpm run release, and setting up release workflows. Do NOT use for general package installation, local npm publishing, or unrelated CI/CD setups.
 ---
 # Release-It Guidelines
 
@@ -55,7 +55,7 @@ Guidelines and configuration instructions for managing package releases using re
        "release": "release-it"
      }
      ```
-   - Validation Gate: Run `npm run release -- --dry-run` to ensure the script maps correctly to the locally installed CLI binary.
+   - Validation Gate: Run `pnpm run release -- --dry-run` to ensure the script maps correctly to the locally installed CLI binary.
 
 4. **GitHub Actions Integration**
    - Configure the publishing workflow under `.github/workflows/publish.yml` to trigger on tag creation or dispatch.
@@ -87,9 +87,9 @@ Guidelines and configuration instructions for managing package releases using re
 
 ### Actions taken
 1. Check that the working directory is clean using `git status`.
-2. Run `npm run release -- pre-release --preRelease=beta --dry-run` to preview the bump and changelog additions.
+2. Run `pnpm run release -- pre-release --preRelease=beta --dry-run` to preview the bump and changelog additions.
 3. Verify that the correct version is suggested (e.g., `1.0.0-beta.0`) and that `CHANGELOG.md` will contain the new release notes.
-4. Execute `npm run release -- pre-release --preRelease=beta` to complete the local bump, tagging, and git push.
+4. Execute `pnpm run release -- pre-release --preRelease=beta` to complete the local bump, tagging, and git push.
 
 ### Result
 - Version in `package.json` updated to pre-release target.
@@ -99,8 +99,8 @@ Guidelines and configuration instructions for managing package releases using re
 ## Common Issues
 
 - **Error: "Git working directory is not clean"**
-  - Fix: Commit or stash any outstanding local changes using `git stash` before initiating `npm run release`.
+  - Fix: Commit or stash any outstanding local changes using `git stash` before initiating `pnpm run release`.
 - **Error: "GitHub token missing"**
   - Fix: Ensure `GITHUB_TOKEN` is exported in the environment, or run release-it with `--no-github` option if doing local-only verification.
 - **Error: "Could not find conventional-changelog template"**
-  - Fix: Verify that `@release-it/conventional-changelog` is listed in the dependencies and run `npm install` to ensure it is present in `node_modules`.
+  - Fix: Verify that `@release-it/conventional-changelog` is listed in the dependencies and run `pnpm install` to ensure it is present in `node_modules`.
