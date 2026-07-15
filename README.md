@@ -8,12 +8,13 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20.19-green" alt="node"></a>
   <a href="https://github.com/arpit-pm1/agentic-setup/actions/workflows/ci.yml"><img src="https://github.com/arpit-pm1/agentic-setup/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <img src="https://img.shields.io/badge/config-83%2F100-green" alt="agentic-setup Score">
+  <img src="https://img.shields.io/badge/config-93%2F100-brightgreen" alt="agentic-setup Score">
   <img src="https://img.shields.io/badge/Claude_Code-supported-blue" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cursor-supported-blue" alt="Cursor">
   <img src="https://img.shields.io/badge/Codex-supported-blue" alt="Codex">
   <img src="https://img.shields.io/badge/OpenCode-supported-blue" alt="OpenCode">
   <img src="https://img.shields.io/badge/GitHub_Copilot-supported-blue" alt="GitHub Copilot">
+  <img src="https://img.shields.io/badge/Antigravity_IDE-supported-blue" alt="Antigravity IDE">
 <!-- readme-badges:end -->
 </p>
 
