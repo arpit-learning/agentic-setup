@@ -67,7 +67,7 @@ jobs:
           TAG="v${{ steps.version.outputs.version }}"
           git rev-parse "refs/tags/${TAG}" >/dev/null \
             || { echo "::error::Tag ${TAG} not found. Run Version Bump, merge the PR, then publish."; exit 1; }
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.13.0
 
