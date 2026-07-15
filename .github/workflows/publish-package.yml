@@ -75,7 +75,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com
-          scope: '@arpit-pm1'
+          scope: '@arpit-learning'
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
