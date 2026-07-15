@@ -9,5 +9,4 @@
 ## Testing
 
 - [ ] `pnpm run ci:check` passes locally
-- [ ] No high/critical `pnpm audit` findings introduced
 - [ ] Tested manually with `agentic-setup init` / `agentic-setup score` (if behavior changed)

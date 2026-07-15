@@ -168,7 +168,6 @@ Every pull request triggers parallel GitHub Actions jobs:
 | `typecheck` | `tsc --noEmit` |
 | `test` | Vitest (Ubuntu + Windows, Node 20 + 22) |
 | `build` | `tsdown` build + CLI smoke test |
-| `security-audit` | `pnpm audit --audit-level=high` |
 | `score` | Dogfooded `agentic-setup score --compare` with PR comment |
 | `analyze` (CodeQL) | Static security analysis |
 
@@ -176,14 +175,12 @@ Run the same gate locally before pushing:
 
 ```bash
 pnpm run ci:check
-pnpm audit --audit-level=high
 ```
 
 ### Branch protection (repo settings)
 
 After workflows are enabled on GitHub, configure **Settings → Branches** for `main` (and optionally `beta`):
 
-**Required status checks:** `lint`, `typecheck`, `test`, `build`, `security-audit`, `score`, `analyze` (CodeQL — enable after first run)
 
 **Recommended:** require 1 PR review, dismiss stale approvals on new commits, enable Dependabot security updates.
 
