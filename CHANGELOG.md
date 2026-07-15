@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.7](https://github.com/arpit-learning/agentic-setup/compare/v1...v1.0.7) (2026-07-15)
+
+
+### Bug Fixes
+
+* remove double dash from pnpm run version-bump to fix release-it option parsing ([9a44ef0](https://github.com/arpit-learning/agentic-setup/commit/9a44ef0c640d6884c31e4380f8e1e1410f8c0eaf))
+
 All notable changes to **agentic-setup** are documented here.
 
 ## [1.0.6](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.6) (2026-07-15)
