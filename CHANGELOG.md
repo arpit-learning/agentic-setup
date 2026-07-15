@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.6](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.6) (2026-07-15)
+
+
+### Bug Fixes
+
+* add inlinedDependencies to devDependencies to ensure bundling on CI ([3a4309f](https://github.com/arpit-pm1/agentic-setup/commit/3a4309f2643f82afc9c2968b93d0c1cd2b0992ca))
+* remove double dash from pnpm run version-bump to fix release-it option parsing ([a95fb59](https://github.com/arpit-pm1/agentic-setup/commit/a95fb59e32a02d98023f6195ca542b9e22cfcac4))
+
 ## [1.0.5](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.5) (2026-07-13)
 
 
