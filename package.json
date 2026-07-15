@@ -1,5 +1,5 @@
 {
-  "name": "agentic-setup",
+  "name": "@arpit-learning/agentic-setup",
   "version": "1.0.6",
   "description": "Make any repository agentic-ready — AI context sync, Codegraph analysis, and readiness scoring",
   "type": "module",
