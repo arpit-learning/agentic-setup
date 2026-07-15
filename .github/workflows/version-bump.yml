@@ -48,7 +48,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
           token: ${{ secrets.GH_TOKEN }}
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.13.0
 
