@@ -4,7 +4,7 @@ const https = require('https');
 const VALID_AGENTS = new Set(['claude', 'cursor', 'codex', 'github-copilot']);
 
 const MANAGED_FILES = ['CLAUDE.md', 'AGENTS.md', '.cursorrules', '.cursor/', '.claude/', '.github/copilot-instructions.md', '.github/instructions/', 'AGENTIC_LEARNINGS.md'];
-const AGENTIC_PKG = 'agentic-setup@latest';
+const AGENTIC_PKG = '@arpit-learning/agentic-setup@latest';
 
 // --- GitHub Actions helpers (no @actions/core dependency) ---
 
