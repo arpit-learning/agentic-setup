@@ -1,5 +1,15 @@
 # Changelog
 
+All notable changes to **agentic-setup** are documented here.
+
+## [1.0.6](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.6) (2026-07-15)
+
+
+### Bug Fixes
+
+* add inlinedDependencies to devDependencies to ensure bundling on CI ([3a4309f](https://github.com/arpit-pm1/agentic-setup/commit/3a4309f2643f82afc9c2968b93d0c1cd2b0992ca))
+* remove double dash from pnpm run version-bump to fix release-it option parsing ([a95fb59](https://github.com/arpit-pm1/agentic-setup/commit/a95fb59e32a02d98023f6195ca542b9e22cfcac4))
+
 ## [1.0.5](https://github.com/arpit-pm1/agentic-setup/compare/v1...v1.0.5) (2026-07-13)
 
 
@@ -47,10 +57,6 @@
 
 * add --dangerously-skip-permissions option to init and setup commands ([10c581c](https://github.com/arpit-pm1/agentic-setup/commit/10c581c46b2ec253edbd6c2e9ca4f8392d07b205))
 * add antigravity provider support and include markdown documentation contents in prompts ([152f35f](https://github.com/arpit-pm1/agentic-setup/commit/152f35fec03d3baf3552bedc9fb1bcf3db6ef4d0))
-
-All notable changes to **agentic-setup** are documented here.
-
-## 1.0.0 — 2026-06-09
 
 First standalone release as **agentic-setup**.
 
