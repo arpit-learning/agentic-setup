@@ -1,6 +1,6 @@
 {
   "name": "agentic-setup",
-  "version": "1.0.1",
+  "version": "1.0.5",
   "description": "Make any repository agentic-ready — AI context sync, Codegraph analysis, and readiness scoring",
   "type": "module",
   "bin": {
