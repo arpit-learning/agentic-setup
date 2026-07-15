@@ -125,5 +125,9 @@
     "json-schema-traverse": "1.0.0",
     "minimatch": "10.2.4",
     "zod": "4.4.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true
   }
 }
