@@ -28,9 +28,9 @@ description: Standardizes TypeScript coding patterns, style guidelines, and type
 
 4. **Build and Validate Changes**
    - Check types using `npx tsc --noEmit`.
-   - Run all tests to make sure there are no regressions using `npm run test`.
-   - Run `npm run build` to confirm the tsdown compilation output to `dist/` is successful.
-   - *Validation:* Confirm that both `npx tsc --noEmit` and `npm run build` complete with zero errors.
+   - Run all tests to make sure there are no regressions using `pnpm run test`.
+   - Run `pnpm run build` to confirm the tsdown compilation output to `dist/` is successful.
+   - *Validation:* Confirm that both `npx tsc --noEmit` and `pnpm run build` complete with zero errors.
 
 ## Examples
 ### Example 1: Creating a scoring utility

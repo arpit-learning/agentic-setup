@@ -37,7 +37,7 @@ description: Prettier integration guidelines, configuration setups, and formatti
    Add formatting scripts to `package.json` to enable easy local and automated checks:
    - `"format": "prettier --write 'src/**/*.{ts,js,json,md}' 'tests/**/*.{ts,js,json,md}'"`
    - `"format:check": "prettier --check 'src/**/*.{ts,js,json,md}' 'tests/**/*.{ts,js,json,md}'"`
-   *Validation gate*: Run `npm run format:check` to ensure Prettier runs successfully and reports status. This step uses the config from Step 1.
+   *Validation gate*: Run `pnpm run format:check` to ensure Prettier runs successfully and reports status. This step uses the config from Step 1.
 
 4. **Verify TypeScript Import Extensions compatibility**:
    Ensure that formatting does not alter or strip the `.js` extension in TypeScript imports (e.g., `import { foo } from './foo.js';`).
@@ -51,17 +51,17 @@ description: Prettier integration guidelines, configuration setups, and formatti
 2. Created `.prettierignore` to skip build and cache directories.
 3. Updated `package.json` dependencies to include `prettier`.
 4. Updated `package.json` `"scripts"` block with `format` and `format:check` commands.
-5. Executed `npm run format` to format the workspace files.
+5. Executed `pnpm run format` to format the workspace files.
 **Result**:
 - Files formatted successfully.
 - Code styling checked and verified.
 
 ## Common Issues
 - **If you see "Error: Cannot find module 'prettier'":**
-  1. Install Prettier as a devDependency: `npm install --save-dev prettier`
+  1. Install Prettier as a devDependency: `pnpm install --save-dev prettier`
   2. Verify it is listed in `package.json` under `devDependencies`.
 - **If you see ESLint and Prettier rules conflicting (e.g., conflicting quote marks or semi-colons):**
-  1. Install `eslint-config-prettier`: `npm install --save-dev eslint-config-prettier`
+  1. Install `eslint-config-prettier`: `pnpm install --save-dev eslint-config-prettier`
   2. Extend ESLint configuration in `.eslintrc.json` or `.eslintrc.js` with `"prettier"` as the last element in the `"extends"` array.
 - **If files in `dist/` or `node_modules/` are being modified by Prettier:**
   1. Verify `.prettierignore` is present in the root directory.

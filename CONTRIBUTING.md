@@ -7,18 +7,18 @@ Thanks for your interest in contributing! Here's how to get started.
 ```bash
 git clone git@github.com:arpit-pm1/agentic-setup.git
 cd agentic-setup
-npm install
-npm run dev      # Watch mode
-npm run test     # Run tests
-npm run build    # Compile
+pnpm install
+pnpm run dev      # Watch mode
+pnpm run test     # Run tests
+pnpm run build    # Compile
 ```
 
 ## Development
 
-- **Build**: `npm run build` (tsdown → `dist/`)
-- **Watch**: `npm run dev`
-- **Test**: `npm run test` (Vitest)
-- **Type check**: `npx tsc --noEmit`
+- **Build**: `pnpm run build` (tsdown → `dist/`)
+- **Watch**: `pnpm run dev`
+- **Test**: `pnpm run test` (Vitest)
+- **Type check**: `pnpm exec tsc --noEmit`
 - **Single test**: `npx vitest run tests/scoring/accuracy.test.ts`
 
 ### Project structure
@@ -62,10 +62,10 @@ Each publish uses the version **already on the branch** (from Version Bump), pub
 
 | release_type | npm dist-tag | Git tag example | Install |
 |--------------|--------------|-----------------|---------|
-| `release` | `latest` | `v1.2.0` | `npm i @arpit-pm1/agentic-setup` |
-| `alpha` | `alpha` | `v1.2.1-alpha.0` | `npm i @arpit-pm1/agentic-setup@alpha` |
-| `beta` | `beta` | `v1.2.1-beta.0` | `npm i @arpit-pm1/agentic-setup@beta` |
-| `rc` | `rc` | `v1.2.1-rc.0` | `npm i @arpit-pm1/agentic-setup@rc` |
+| `release` | `latest` | `v1.2.0` | `pnpm add @arpit-pm1/agentic-setup` |
+| `alpha` | `alpha` | `v1.2.1-alpha.0` | `pnpm add @arpit-pm1/agentic-setup@alpha` |
+| `beta` | `beta` | `v1.2.1-beta.0` | `pnpm add @arpit-pm1/agentic-setup@beta` |
+| `rc` | `rc` | `v1.2.1-rc.0` | `pnpm add @arpit-pm1/agentic-setup@rc` |
 
 **Consumer auth** — copy [`.npmrc.example`](.npmrc.example) to `~/.npmrc` and set a GitHub PAT with `read:packages` (and repo access if the package is private):
 
@@ -103,18 +103,18 @@ Tag vX.Y.Z not found. Run Version Bump, merge the PR, then publish.
 
 **After a failed Version Bump run:** release-it may have pushed the git tag but not merged the PR. Delete the orphan tag if needed: `git push origin :refs/tags/vX.Y.Z-alpha.N`.
 
-**Re-running Publish Package:** npm rejects duplicate versions. Only re-run if a prior publish failed before `npm publish` completed.
+**Re-running Publish Package:** npm rejects duplicate versions. Only re-run if a prior publish failed before `pnpm publish` completed.
 
 **Verify `GH_TOKEN`:** re-run the workflow — the first step fails fast if the secret is missing.
 
-The publish workflow uses `GH_TOKEN` for `npm publish`, `gh release`, and floating tag push. No separate `NPM_TOKEN` is required.
+The publish workflow uses `GH_TOKEN` for `pnpm publish`, `gh release`, and floating tag push. No separate `NPM_TOKEN` is required.
 
 ### CI release workflows
 
 | Workflow | What it does |
 |----------|--------------|
-| **Version Bump** | release-it on a release branch → push branch + git tag → open PR to selected base branch (no npm publish, no GitHub Release) |
-| **Publish Package** | validate + build + npm publish to GitHub Packages + GitHub Release (+ floating `vMAJOR` on stable) |
+| **Version Bump** | release-it on a release branch → push branch + git tag → open PR to selected base branch (no pnpm publish, no GitHub Release) |
+| **Publish Package** | validate + build + pnpm publish to GitHub Packages + GitHub Release (+ floating `vMAJOR` on stable) |
 
 **Recommended flow:** run **Version Bump** → merge PR → run **Publish Package** on the merged branch with matching `release_type`.
 
@@ -131,10 +131,10 @@ release-it minor --dry-run
 release-it patch prerelease --preRelease=alpha --dry-run --no-plugins
 
 # Workflow-equivalent script names
-npm run version-bump:patch:alpha
-npm run version-bump:minor:release
-npm run version:print
-npm run ci:check && npm run build
+pnpm run version-bump:patch:alpha
+pnpm run version-bump:minor:release
+pnpm run version:print
+pnpm run ci:check && pnpm run build
 ```
 
 In CI, **Version Bump** commits and tags on a release branch, pushes the branch and tag, and opens a PR (CHANGELOG on stable releases). **Publish Package** publishes the existing version to GitHub Packages and creates a GitHub Release. Only **`GH_TOKEN`** is required.
@@ -144,7 +144,7 @@ In CI, **Version Bump** commits and tags on a release branch, pushes the branch 
 Configure `.npmrc` per [`.npmrc.example`](.npmrc.example), then:
 
 ```bash
-npm i @arpit-pm1/agentic-setup@alpha
+pnpm add @arpit-pm1/agentic-setup@alpha
 npx agentic-setup score
 ```
 
@@ -168,15 +168,15 @@ Every pull request triggers parallel GitHub Actions jobs:
 | `typecheck` | `tsc --noEmit` |
 | `test` | Vitest (Ubuntu + Windows, Node 20 + 22) |
 | `build` | `tsdown` build + CLI smoke test |
-| `security-audit` | `npm audit --audit-level=high` |
+| `security-audit` | `pnpm audit --audit-level=high` |
 | `score` | Dogfooded `agentic-setup score --compare` with PR comment |
 | `analyze` (CodeQL) | Static security analysis |
 
 Run the same gate locally before pushing:
 
 ```bash
-npm run ci:check
-npm audit --audit-level=high
+pnpm run ci:check
+pnpm audit --audit-level=high
 ```
 
 ### Branch protection (repo settings)
@@ -192,7 +192,7 @@ After workflows are enabled on GitHub, configure **Settings → Branches** for `
 1. Fork the repo and create a branch from `main` (or `staging` for in-flight work)
 2. Make your changes
 3. Add tests for new functionality
-4. Run `npm run ci:check` locally
+4. Run `pnpm run ci:check` locally
 5. Use [conventional commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `refactor:`, `chore:`
 6. For risky changes, publish an `alpha` / `beta` / `rc` build from the **Publish Package** workflow before cutting a stable `release`
 

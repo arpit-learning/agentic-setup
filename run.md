@@ -5,7 +5,7 @@ Local development and verification for agents and automation.
 ## Startup
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Health check
@@ -20,7 +20,7 @@ curl -sf "http://localhost:3000/health" || echo "service not ready"
 ## Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## Auth
