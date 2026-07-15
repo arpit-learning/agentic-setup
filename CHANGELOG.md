@@ -1,5 +1,7 @@
 # Changelog
 
+## [1.0.8](https://github.com/arpit-learning/agentic-setup/compare/v1.0.7...v1.0.8) (2026-07-15)
+
 ## [1.0.7](https://github.com/arpit-learning/agentic-setup/compare/v1...v1.0.7) (2026-07-15)
 
 
