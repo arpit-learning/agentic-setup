@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { ciInitCommand } from '../../src/commands/ci.js';
+
+vi.mock('@clack/prompts', () => ({
+  multiselect: vi.fn().mockResolvedValue(['common/agentic-sync.yml']),
+  isCancel: vi.fn().mockReturnValue(false),
+  cancel: vi.fn(),
+}));
 
 describe('ciInitCommand', () => {
   let tmpDir: string;

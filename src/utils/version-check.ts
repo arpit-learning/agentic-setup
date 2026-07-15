@@ -7,7 +7,12 @@ import ora from 'ora';
 import * as p from '@clack/prompts';
 
 const __dirname_vc = path.dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname_vc, '..', 'package.json'), 'utf-8'));
+const pkgPath = path.resolve(
+  __dirname_vc,
+  path.basename(__dirname_vc) === 'dist' ? '..' : '../..',
+  'package.json',
+);
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 
 export function getChannel(version: string): string {
   const match = version.match(/-(dev|next)\./);

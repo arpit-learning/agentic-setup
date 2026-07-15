@@ -1,0 +1,35 @@
+name: Java CI (Maven)
+
+on:
+  push:
+    branches: [ main, beta, staging ]
+  pull_request:
+    branches: [ main, beta, staging ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK {{JAVA_VERSION}}
+      uses: actions/setup-java@v4
+      with:
+        java-version: '{{JAVA_VERSION}}'
+        distribution: '{{JDK_DISTRIBUTION}}'
+        cache: maven
+        
+    - name: Check Formatting (Spotless)
+      run: mvn spotless:check
+      
+    - name: Run Static Analysis (SpotBugs)
+      run: mvn spotbugs:check
+
+    - name: Run Tests (JUnit) and generate Code Coverage (JaCoCo)
+      run: mvn -B test jacoco:report
+      
+    - name: Upload JaCoCo Coverage Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: jacoco-report
+        path: target/site/jacoco/
