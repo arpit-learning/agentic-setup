@@ -24,7 +24,7 @@ description: Guides writing and updating bash scripts, CLI wrappers, and Node.js
      SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
      PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
      ```
-   - Verify that all relative paths used in commands (e.g., `npm run`, `vitest`) are correctly absolute or relative to `PROJECT_ROOT`.
+   - Verify that all relative paths used in commands (e.g., `pnpm run`, `vitest`) are correctly absolute or relative to `PROJECT_ROOT`.
 3. **Handle Arguments and Flags Safely**:
    - Use standard parameter expansion for default values to prevent "unbound variable" errors under `set -u`:
      ```bash

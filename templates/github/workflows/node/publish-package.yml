@@ -67,15 +67,15 @@ jobs:
           TAG="v${{ steps.version.outputs.version }}"
           git rev-parse "refs/tags/${TAG}" >/dev/null \
             || { echo "::error::Tag ${TAG} not found. Run Version Bump, merge the PR, then publish."; exit 1; }
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: https://npm.pkg.github.com
-          scope: '@arpit-learning'
+          scope: '@arpit-pm1'
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile

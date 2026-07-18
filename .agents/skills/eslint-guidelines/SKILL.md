@@ -33,6 +33,6 @@ description: Guides the configuration, rule integration, and type safety audits 
 ## Common Issues
 - **If you see 'Rule typescript-eslint/no-explicit-any not found'**:
   1. Verify the parser and plugin packages are correctly loaded under `plugins`.
-  2. Run `npm install typescript-eslint` if the dependency is missing.
+  2. Run `pnpm install typescript-eslint` if the dependency is missing.
 - **If you see 'Missing file extension ".js" for ...' lint error**:
   1. Ensure that source code imports explicitly use `.js` extension even if importing a `.ts` file, matching the project's native ES module requirements.

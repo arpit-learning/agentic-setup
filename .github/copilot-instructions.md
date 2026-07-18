@@ -5,19 +5,19 @@ CLI tool to keep AI agent configs in sync with your codebase.
 ## Commands
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ```bash
-npm run test
+pnpm run test
 ```
 
 ```bash
-npm run lint
+pnpm run lint
 ```
 
 ```bash

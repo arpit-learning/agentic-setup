@@ -39,7 +39,7 @@ description: Guides writing, running, and debugging tests in the agentic-setup c
 
 6. **Run Full Test Suite**
    - Verify changes didn't break other parts of the system.
-   - Run command: `npm test`.
+   - Run command: `pnpm test`.
    - *Validation Gate*: Verify all tests pass.
 
 ## Examples

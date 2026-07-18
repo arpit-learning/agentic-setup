@@ -9,7 +9,7 @@ Guidelines and steps to integrate, configure, and maintain Husky Git hooks withi
 ## Critical
 1. **Never bypass hooks**: Do not commit with `--no-verify` unless troubleshooting an environmental issue. All hooks must execute successfully.
 2. **Hook execution time**: Hooks must run in under 10 seconds. Use selective checks or target specific test suites where possible to keep commit speed fast.
-3. **Execution context**: Ensure all hooks use the local project dependencies and execute using `npx` or `npm run` as defined in `package.json`.
+3. **Execution context**: Ensure all hooks use the local project dependencies and execute using `npx` or `pnpm run` as defined in `package.json`.
 
 ## Instructions
 
@@ -17,7 +17,7 @@ Guidelines and steps to integrate, configure, and maintain Husky Git hooks withi
    - Check if `husky` is already listed under `devDependencies` in `package.json`.
    - If not present, install it using:
      ```bash
-     npm install husky --save-dev
+     pnpm install husky --save-dev
      ```
    - Validation Gate: Confirm `"husky"` is listed in `package.json` and `node_modules/husky` exists before proceeding.
 
@@ -30,7 +30,7 @@ Guidelines and steps to integrate, configure, and maintain Husky Git hooks withi
    - Validation Gate: Verify that the `.husky/` directory contains a `pre-commit` script file.
 
 3. **Configure Pre-commit Hook**
-   - Open `.husky/pre-commit` (typically contains `npm test` by default).
+   - Open `.husky/pre-commit` (typically contains `pnpm test` by default).
    - Update it to execute the fast checks: typechecking and tests.
      ```bash
      #!/bin/sh
@@ -40,7 +40,7 @@ Guidelines and steps to integrate, configure, and maintain Husky Git hooks withi
      npx tsc --noEmit || exit 1
 
      # Run Vitest in run-once mode
-     npm run test -- --run || exit 1
+     pnpm run test -- --run || exit 1
      ```
    - Validation Gate: Ensure `.husky/pre-commit` is executable. On macOS/Linux, run:
      ```bash
@@ -59,7 +59,7 @@ Guidelines and steps to integrate, configure, and maintain Husky Git hooks withi
 ### Example 1: Integrating Husky for Pre-commit Validation
 - **User says**: "Set up git hooks so that typescript files are typechecked and tests are run on every commit."
 - **Actions taken**:
-  1. Ran `npm install husky --save-dev` to install dependency.
+  1. Ran `pnpm install husky --save-dev` to install dependency.
   2. Ran `npx husky init` to set up directory structure.
   3. Modified `.husky/pre-commit` with:
      ```bash
@@ -67,7 +67,7 @@ Guidelines and steps to integrate, configure, and maintain Husky Git hooks withi
      . "$(dirname "$0")/_/husky.sh"
 
      echo "Running pre-commit checks..."
-     npx tsc --noEmit && npm test -- --run
+     npx tsc --noEmit && pnpm test -- --run
      ```
   4. Ran `chmod +x .husky/pre-commit`.
   5. Tested execution with `./.husky/pre-commit`.
@@ -89,7 +89,7 @@ Guidelines and steps to integrate, configure, and maintain Husky Git hooks withi
      ```
 
 ### Prepare script fails in CI/CD or docker
-- **Error/Symptom**: `npm install` fails with `husky: command not found` in non-development environments.
+- **Error/Symptom**: `pnpm install` fails with `husky: command not found` in non-development environments.
 - **Fix**:
   - Update the `prepare` script in `package.json` to only run husky if it is installed (ignoring in production):
     ```json
