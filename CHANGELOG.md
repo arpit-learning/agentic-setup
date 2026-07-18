@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.9](https://github.com/arpit-learning/agentic-setup/compare/v1...v1.0.9) (2026-07-18)
+
+
+### Features
+
+* update pre-commit hook to v3, include score in refresh, and track score files in gitignore ([cba95f4](https://github.com/arpit-learning/agentic-setup/commit/cba95f43dbf958f66d997cb8138a4755f4cf4e55))
+
 ## [1.0.8](https://github.com/arpit-learning/agentic-setup/compare/v1.0.7...v1.0.8) (2026-07-15)
 
 ## [1.0.7](https://github.com/arpit-learning/agentic-setup/compare/v1...v1.0.7) (2026-07-15)
