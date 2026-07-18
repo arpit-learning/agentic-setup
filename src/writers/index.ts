@@ -185,12 +185,20 @@ export function getFilesToWrite(setup: AgentSetup): string[] {
 
 function ensureGitignore() {
   const gitignorePath = '.gitignore';
+  const block =
+    '\n# agentic-setup local state\n.agentic-setup/\n!.agentic-setup/score.json\n!.agentic-setup/score-history.jsonl\n';
+
   if (fs.existsSync(gitignorePath)) {
     const content = fs.readFileSync(gitignorePath, 'utf-8');
     if (!content.includes('.agentic-setup/')) {
-      fs.appendFileSync(gitignorePath, '\n# agentic-setup local state\n.agentic-setup/\n');
+      fs.appendFileSync(gitignorePath, block);
+    } else if (!content.includes('!.agentic-setup/score.json')) {
+      fs.appendFileSync(
+        gitignorePath,
+        '\n# agentic-setup score files\n!.agentic-setup/score.json\n!.agentic-setup/score-history.jsonl\n',
+      );
     }
   } else {
-    fs.writeFileSync(gitignorePath, '# agentic-setup local state\n.agentic-setup/\n');
+    fs.writeFileSync(gitignorePath, block.trimStart());
   }
 }
