@@ -48,6 +48,18 @@ const CONFIG_DIRS = ['.claude', '.cursor', '.agents', '.opencode', '.gemini', '.
 function scoreBaseResult(ref: string, target: TargetAgent | undefined): ScoreResult | null {
   if (!/^[\w.\-/~^@{}]+$/.test(ref)) return null;
 
+  try {
+    const scoreJsonContent = execFileSync('git', ['show', `${ref}:.agentic-setup/score.json`], {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    if (scoreJsonContent) {
+      return JSON.parse(scoreJsonContent) as ScoreResult;
+    }
+  } catch {
+    /* fallback to dynamic computation if no score.json in base ref */
+  }
+
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agentic-compare-'));
   try {
     for (const file of CONFIG_FILES) {

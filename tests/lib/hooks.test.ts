@@ -637,7 +637,7 @@ describe('pre-commit hook version marker (F-P0-4)', () => {
       expect(result.upgraded).toBe(false);
       expect(isPreCommitHookCurrent()).toBe(true);
       const content = fs.readFileSync(path.join(hooksDir, 'pre-commit'), 'utf-8');
-      expect(content).toContain('# agentic:pre-commit:v2:start');
+      expect(content).toContain('# agentic:pre-commit:v3:start');
     } finally {
       process.chdir(origCwd);
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -697,7 +697,7 @@ describe('pre-commit hook version marker (F-P0-4)', () => {
       expect(result.alreadyInstalled).toBe(false);
 
       const newContent = fs.readFileSync(hookPath, 'utf-8');
-      expect(newContent).toContain('# agentic:pre-commit:v2:start');
+      expect(newContent).toContain('# agentic:pre-commit:v3:start');
       expect(newContent).not.toContain('old body that uses old refresh flags');
     } finally {
       process.chdir(origCwd);
@@ -719,7 +719,7 @@ describe('pre-commit hook version marker (F-P0-4)', () => {
       installPreCommitHook();
       const newContent = fs.readFileSync(hookPath, 'utf-8');
       expect(newContent).toContain('gitleaks detect --no-banner');
-      expect(newContent).toContain('# agentic:pre-commit:v2:start');
+      expect(newContent).toContain('# agentic:pre-commit:v3:start');
     } finally {
       process.chdir(origCwd);
       fs.rmSync(tmpDir, { recursive: true, force: true });

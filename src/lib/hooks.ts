@@ -305,7 +305,7 @@ export const removeNotificationHook = notificationHook.remove;
 // detects mismatched versions and re-installs so users on stale agentic-setup
 // versions get hook upgrades.
 //
-const HOOK_BLOCK_VERSION = 'v2';
+const HOOK_BLOCK_VERSION = 'v3';
 const PRECOMMIT_START = `# agentic:pre-commit:${HOOK_BLOCK_VERSION}:start`;
 const PRECOMMIT_END = `# agentic:pre-commit:${HOOK_BLOCK_VERSION}:end`;
 const PRECOMMIT_ANY_VERSION_START_RE = /^#\s*agentic:pre-commit:(?:[a-zA-Z0-9_.-]+:)?start\s*$/m;
@@ -418,6 +418,7 @@ if ${guard}; then
   echo "\\033[2magentic-setup: refreshing docs...\\033[0m"
   ${invoke} refresh --quiet 2>.agentic-setup/refresh-hook.log || echo "\\033[33magentic-setup: refresh skipped — see .agentic-setup/refresh-hook.log\\033[0m" >&2
   ${invoke} learn finalize 2>>.agentic-setup/refresh-hook.log || true
+  ${invoke} score --quiet 2>>.agentic-setup/refresh-hook.log || true
   git diff --name-only -- CLAUDE.md .claude/ .cursor/ AGENTS.md AGENTIC_LEARNINGS.md .github/ .agents/ .opencode/ .agentic-setup/score.json .agentic-setup/score-history.jsonl 2>/dev/null | xargs git add 2>/dev/null || true
 fi
 ${PRECOMMIT_END}`;
