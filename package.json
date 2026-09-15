@@ -86,7 +86,7 @@
     "diff": "^9.0.0",
     "glob": "^13.0.6",
     "google-auth-library": "^10.7.0",
-    "openai": "^6.47.0",
+    "openai": "^7.15.0",
     "ora": "^9.4.1",
     "p-limit": "^7.3.0",
     "posthog-node": "^5.42.0",
